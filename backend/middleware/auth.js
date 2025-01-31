@@ -1,25 +1,43 @@
-import { verifyToken } from "../utils/jwtUtils.js"
-import User from "../models/User.js"
+const jwt = require("jsonwebtoken")
+const User = require("../models/User")
 
-export default async (req, res, next) => {
+exports.protect = async (req, res, next) => {
   try {
-    const token = req.header("Authorization")?.replace("Bearer ", "")
-
+    let token
+    if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
+      token = req.headers.authorization.split(" ")[1]
+    }
     if (!token) {
-      throw new Error("No token provided")
+      return res.status(401).json({ message: "You are not logged in" })
     }
-
-    const decoded = verifyToken(token)
-    const user = await User.findOne({ _id: decoded.id })
-
+    const decoded = jwt.verify(token, process.env.JWT_SECRET)
+    const user = await User.findById(decoded.id)
     if (!user) {
-      throw new Error("User not found")
+      return res.status(401).json({ message: "User no longer exists" })
     }
-
     req.user = user
     next()
   } catch (error) {
-    res.status(401).json({ message: "Please authenticate" })
+    res.status(401).json({ message: "Invalid token" })
   }
+}
+
+exports.restrictTo = (...roles) => {
+  return (req, res, next) => {
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({ message: "You do not have permission to perform this action" })
+    }
+    if (req.user.role === "coach" && !req.user.isApproved) {
+      return res.status(403).json({ message: "Your account is pending approval" })
+    }
+    next()
+  }
+}
+
+exports.isAdmin = (req, res, next) => {
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ message: "Admin access required" })
+  }
+  next()
 }
 

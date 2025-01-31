@@ -1,32 +1,87 @@
-import React from "react"
-import { Routes, Route } from "react-router-dom"
-import { motion } from "framer-motion"
-import Layout from "./components/Layout/Layout"
-import Home from "./pages/Home"
-import Coaches from "./pages/Coaches"
-import Booking from "./pages/Booking"
-import Dashboard from "./pages/Dashboard"
-import Login from "./components/Auth/Login"
-import Register from "./components/Auth/Register"
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom"
+import { AuthProvider } from "./contexts/AuthContext"
+import Header from "./components/Header"
+import Footer from "./components/Footer"
+import HomePage from "./pages/HomePage"
+import CoachListingPage from "./pages/CoachListingPage"
+import CoachProfilePage from "./pages/CoachProfilePage"
+import BookingPage from "./pages/BookingPage"
+import UserDashboard from "./pages/UserDashboard"
+import CoachDashboard from "./pages/CoachDashboard"
 import AdminDashboard from "./pages/AdminDashboard"
-import CoachProfile from "./pages/CoachProfile"
+import LoginRegisterPage from "./pages/LoginRegisterPage"
+import PaymentPage from "./pages/PaymentPage"
+import PrivateRoute from "./components/PrivateRoute"
+import CoachOnboardingPage from "./features/coach/CoachOnboardingPage"
+import "./index.css"
+import "./App.css"
 
 function App() {
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
-      <Layout>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/coaches" element={<Coaches />} />
-          <Route path="/coaches/:id" element={<CoachProfile />} />
-          <Route path="/booking/:coachId" element={<Booking />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/admin" element={<AdminDashboard />} />
-        </Routes>
-      </Layout>
-    </motion.div>
+    <AuthProvider>
+      <Router>
+        <div className="flex flex-col min-h-screen">
+          <Header />
+          <main className="flex-grow">
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/coaches" element={<CoachListingPage />} />
+              <Route path="/coach/:id" element={<CoachProfilePage />} />
+              <Route
+                path="/booking"
+                element={
+                  <PrivateRoute>
+                    <BookingPage />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/user-dashboard"
+                element={
+                  <PrivateRoute>
+                    <UserDashboard />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/coach-dashboard"
+                element={
+                  <PrivateRoute>
+                    <CoachDashboard />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/admin-dashboard"
+                element={
+                  <PrivateRoute adminOnly={true}>
+                    <AdminDashboard />
+                  </PrivateRoute>
+                }
+              />
+              <Route path="/login" element={<LoginRegisterPage />} />
+              <Route
+                path="/payment"
+                element={
+                  <PrivateRoute>
+                    <PaymentPage />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/coach-onboarding"
+                element={
+                  <PrivateRoute>
+                    <CoachOnboardingPage />
+                  </PrivateRoute>
+                }
+              />
+            </Routes>
+          </main>
+          <Footer />
+        </div>
+      </Router>
+    </AuthProvider>
   )
 }
 

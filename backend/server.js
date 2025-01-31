@@ -1,53 +1,41 @@
-import express from "express"
-import mongoose from "mongoose"
-import cors from "cors"
-import dotenv from "dotenv"
-import authRoutes from "./routes/auth.js"
-import bookingRoutes from "./routes/bookings.js"
-import coachRoutes from "./routes/coaches.js"
-import adminRoutes from "./routes/admin.js"
-import errorHandler from "./middleware/errorHandler.js"
-
-dotenv.config()
+require("dotenv").config()
+const express = require("express")
+const cors = require("cors")
+const jwt = require("jsonwebtoken")
+const connectDB = require("./config/db")
+const authRoutes = require("./routes/auth")
+const coachRoutes = require("./routes/coaches")
+const bookingRoutes = require("./routes/bookings")
+const reviewRoutes = require("./routes/reviews")
+const paymentRoutes = require("./routes/payments")
 
 const app = express()
 
-// Middleware
+// Connect to MongoDB
+connectDB()
+
 app.use(cors())
 app.use(express.json())
 
-// Logging middleware
-app.use((req, res, next) => {
-  console.log(`${req.method} ${req.url}`)
-  console.log("Request body:", req.body)
-  next()
-})
+// Middleware to verify JWT
+const verifyToken = (req, res, next) => {
+  const token = req.header("Authorization")?.split(" ")[1]
+  if (!token) return res.status(401).json({ message: "Access denied" })
 
-// Check if JWT_SECRET is set
-if (!process.env.JWT_SECRET) {
-  console.error("JWT_SECRET is not set in the environment variables")
-  process.exit(1)
+  try {
+    const verified = jwt.verify(token, process.env.JWT_SECRET)
+    req.user = verified
+    next()
+  } catch (err) {
+    res.status(400).json({ message: "Invalid token" })
+  }
 }
 
-// Connect to MongoDB
-mongoose
-  .connect(process.env.MONGODB_URI)
-  .then(() => console.log("Connected to MongoDB"))
-  .catch((err) => console.error("MongoDB connection error:", err))
-
-// Routes
-app.use("/auth", authRoutes)
-app.use("/api/bookings", bookingRoutes)
-app.use("/api/coaches", coachRoutes)
-app.use("/api", adminRoutes)
-
-// 404 handler
-app.use((req, res, next) => {
-  res.status(404).json({ message: "Route not found" })
-})
-
-// Error handler
-app.use(errorHandler)
+app.use("/api/auth", authRoutes)
+app.use("/api/coaches", verifyToken, coachRoutes)
+app.use("/api/bookings", verifyToken, bookingRoutes)
+app.use("/api/reviews", verifyToken, reviewRoutes)
+app.use("/api/payments", verifyToken, paymentRoutes)
 
 const PORT = process.env.PORT || 5000
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`))
