@@ -1,89 +1,88 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom"
-import { AuthProvider } from "./contexts/AuthContext"
-import Header from "./components/Header"
-import Footer from "./components/Footer"
-import HomePage from "./pages/HomePage"
-import CoachListingPage from "./pages/CoachListingPage"
-import CoachProfilePage from "./pages/CoachProfilePage"
-import BookingPage from "./pages/BookingPage"
-import UserDashboard from "./pages/UserDashboard"
-import CoachDashboard from "./pages/CoachDashboard"
-import AdminDashboard from "./pages/AdminDashboard"
-import LoginRegisterPage from "./pages/LoginRegisterPage"
-import PaymentPage from "./pages/PaymentPage"
-import PrivateRoute from "./components/PrivateRoute"
-import CoachOnboardingPage from "./features/coach/CoachOnboardingPage"
-import "./index.css"
-import "./App.css"
+import React from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
+import Home from "./pages/Home";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import UserDashboard from "./pages/UserDashboard";
+import CoachDashboard from "./pages/CoachDashboard";
+import AdminDashboard from "./pages/AdminDashboard";
+import Reports from "./pages/Reports";
+import Navbar from "./components/Navbar";
+import Footer from "./components/Footer";
+import ProtectedRoute from "./components/ProtectedRoute";
+import CoachAvailability from "./pages/CoachAvailability";
+import Bookings from "./pages/Bookings";
 
 function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <div className="flex flex-col min-h-screen">
-          <Header />
-          <main className="flex-grow">
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/coaches" element={<CoachListingPage />} />
-              <Route path="/coach/:id" element={<CoachProfilePage />} />
-              <Route
-                path="/booking"
-                element={
-                  <PrivateRoute>
-                    <BookingPage />
-                  </PrivateRoute>
-                }
-              />
-              <Route
-                path="/user-dashboard"
-                element={
-                  <PrivateRoute>
-                    <UserDashboard />
-                  </PrivateRoute>
-                }
-              />
-              <Route
-                path="/coach-dashboard"
-                element={
-                  <PrivateRoute>
-                    <CoachDashboard />
-                  </PrivateRoute>
-                }
-              />
-              <Route
-                path="/admin-dashboard"
-                element={
-                  <PrivateRoute adminOnly={true}>
-                    <AdminDashboard />
-                  </PrivateRoute>
-                }
-              />
-              <Route path="/login" element={<LoginRegisterPage />} />
-              <Route
-                path="/payment"
-                element={
-                  <PrivateRoute>
-                    <PaymentPage />
-                  </PrivateRoute>
-                }
-              />
-              <Route
-                path="/coach-onboarding"
-                element={
-                  <PrivateRoute>
-                    <CoachOnboardingPage />
-                  </PrivateRoute>
-                }
-              />
-            </Routes>
-          </main>
-          <Footer />
-        </div>
-      </Router>
-    </AuthProvider>
-  )
+    <>
+      <Navbar />
+      <Routes>
+        {/* Public routes */}
+        <Route path="/" element={<Home />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+
+        {/* User/Client routes */}
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute allowedRoles={["client"]}>
+              <UserDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/book/:coachId"
+          element={
+            <ProtectedRoute allowedRoles={["client"]}>
+              <Bookings />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Coach routes */}
+        <Route
+          path="/coach-dashboard"
+          element={
+            <ProtectedRoute allowedRoles={["coach"]}>
+              <CoachDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/coach/availability"
+          element={
+            <ProtectedRoute allowedRoles={["coach"]}>
+              <CoachAvailability />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Admin routes */}
+        <Route
+          path="/admin-dashboard"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/reports"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <Reports />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Catch all route */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+      <Footer />
+    </>
+  );
 }
 
-export default App
-
+export default App;
