@@ -37,17 +37,13 @@ const PORT = process.env.PORT || 5000;
 app.use(compression());
 
 // CORS Configuration
-app.use(cors({
-  origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: [
-    'Content-Type',
-    'Authorization',
-    'Cache-Control',
-    'Pragma',
-    'X-Requested-With'
+pp.use(cors({
+  origin: [
+    'https://cricket-coach-booking-app.vercel.app',
+    'https://cricket-coach-booking-app-frontend.vercel.app',
+    'http://localhost:3000'
   ],
-  exposedHeaders: ['Content-Range', 'X-Content-Range'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   credentials: true
 }));
 
