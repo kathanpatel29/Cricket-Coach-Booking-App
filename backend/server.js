@@ -37,7 +37,7 @@ const PORT = process.env.PORT || 5000;
 app.use(compression());
 
 // CORS Configuration
-pp.use(cors({
+app.use(cors({
   origin: [
     'https://cricket-coach-booking-app.vercel.app',
     'https://cricket-coach-booking-app-frontend.vercel.app',
