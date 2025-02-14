@@ -25,10 +25,9 @@ const app = express();
 app.use(compression());
 
 // CORS Configuration
-const allowedOrigins = [
-  'http://localhost:3000',
-  'https://cricket-coach-booking-app.vercel.app'
-];
+const allowedOrigins = process.env.NODE_ENV === 'production' 
+  ? ['https://cricket-coach-booking-app.vercel.app']
+  : ['http://localhost:3000'];
 
 app.use(cors({
   origin: function(origin, callback) {
@@ -41,7 +40,7 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'Cache-Control', 'Pragma'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'Cache-Control', 'Pragma']
 }));
 
 // Simple OPTIONS handler
