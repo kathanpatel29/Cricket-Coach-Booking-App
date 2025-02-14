@@ -31,7 +31,6 @@ const { errorHandler } = require('./middleware/errorMiddleware.js');
 const { connectDB } = require('./config/db.js');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
 
 // Enable compression
 app.use(compression());
@@ -39,7 +38,6 @@ app.use(compression());
 // CORS Configuration
 app.use(cors({
   origin: [
-    'https://cricket-coach-booking-app-backend.vercel.app',
     'https://cricket-coach-booking-app.vercel.app',
     'http://localhost:3000'
   ],
@@ -69,22 +67,31 @@ app.use('/api/bookings', bookingRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/admin', adminRoutes);
 
-// Serve static assets in production
-if (process.env.NODE_ENV === "production") {
-  app.get('*', (req, res) => {
-    res.sendFile(path.resolve(__dirname, '../frontend', 'dist', 'index.html'));
+// Test route
+app.get('/api/test', (req, res) => {
+  res.json({ message: 'API is working' });
+});
+
+// Root route
+app.get('/', (req, res) => {
+  res.json({ message: 'Cricket Coach Booking API is running' });
+});
+
+// Handle 404 routes
+app.use('*', (req, res) => {
+  res.status(404).json({ 
+    message: 'Route not found',
+    status: 404
   });
-} else {
-  app.get('/', (req, res) => {
-    res.send('Cricket Coach Booking API is running');
-  });
-}
+});
+
 // Error Handler
 app.use(errorHandler);
 
 // Connect to database
 connectDB();
 
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
