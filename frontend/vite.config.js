@@ -3,7 +3,9 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import fs from 'fs';
 
-// https://vitejs.dev/config/
+// Check if running in Vercel (Production) or Local Development
+const isProduction = process.env.VERCEL || process.env.NODE_ENV === 'production';
+
 export default defineConfig({
   plugins: [react()],
   resolve: {
@@ -14,11 +16,12 @@ export default defineConfig({
   server: {
     port: 3000, // Default Vite port, change if needed
     open: true, // Opens the browser automatically
-    https: process.env.NODE_ENV === 'production' ? {
-      // In production, you would want to use proper SSL certificates
-      key: fs.readFileSync('./ssl/key.pem'),
-      cert: fs.readFileSync('./ssl/cert.pem'),
-    } : false,
+    https: !isProduction && fs.existsSync('./ssl/key.pem') && fs.existsSync('./ssl/cert.pem')
+      ? {
+          key: fs.readFileSync('./ssl/key.pem'),
+          cert: fs.readFileSync('./ssl/cert.pem')
+        }
+      : false,
     proxy: {
       '/api': {
         target: process.env.VITE_API_URL || 'http://localhost:5000',
