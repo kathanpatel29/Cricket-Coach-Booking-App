@@ -26,7 +26,7 @@ app.use(compression());
 
 // CORS Configuration
 const allowedOrigins = process.env.NODE_ENV === 'production' 
-  ? ['https://cricket-coach-booking-app.vercel.app']
+  ? ['https://cric-coach-app.vercel.app']
   : ['http://localhost:3000'];
 
 app.use(cors({

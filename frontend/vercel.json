@@ -6,7 +6,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://cricket-coach-booking-app-backend.vercel.app/api/:path*"
+      "destination": "https://cricket-coach-backend.vercel.app/api/:path*"
     },
     {
       "source": "/(.*)",
