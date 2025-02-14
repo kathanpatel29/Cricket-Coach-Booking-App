@@ -1,28 +1,167 @@
-@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Roboto:wght@300;400;500;700&display=swap");
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* Custom base styles */
 :root {
-  --color-primary: #0077b6;
-  --color-secondary: #f77f00;
-  --color-background: #f8f9fa;
-  --color-text: #212529;
+  --primary-color: #0077b6;
+  --primary-dark: #005b8e;
+  --primary-light: #0096e3;
+  --secondary-color: #f77f00;
+  --secondary-dark: #c66600;
+  --secondary-light: #ff9933;
+  --success-color: #10b981;
+  --warning-color: #f59e0b;
+  --error-color: #ef4444;
+  --info-color: #3b82f6;
+  --background-color: #f8f9fa;
+  --surface-color: #ffffff;
+  --text-primary: #2d3748;
+  --text-secondary: #4a5568;
+  --border-radius: 8px;
+  --shadow-sm: 0px 1px 3px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0px 2px 4px rgba(0, 0, 0, 0.05), 0px 4px 6px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0px 4px 6px rgba(0, 0, 0, 0.05), 0px 10px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* Reset styles that won't conflict with MUI */
+html {
+  font-size: 16px;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  scroll-behavior: smooth;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
 }
 
 body {
-  font-family: "Roboto", sans-serif;
-  background-color: var(--color-background);
-  color: var(--color-text);
+  margin: 0;
+  background-color: var(--background-color);
+  color: var(--text-primary);
+  line-height: 1.5;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  text-size-adjust: 100%;
 }
 
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-  font-family: "Poppins", sans-serif;
+/* Custom utility classes */
+@layer components {
+  .container-custom {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  .btn-primary {
+    @apply bg-primary hover:bg-primary-dark text-white font-semibold py-2.5 px-4 rounded-lg transition-colors duration-200 shadow-none hover:shadow-none;
+  }
+
+  .btn-secondary {
+    @apply bg-secondary hover:bg-secondary-dark text-white font-semibold py-2.5 px-4 rounded-lg transition-colors duration-200 shadow-none hover:shadow-none;
+  }
+
+  .card {
+    @apply bg-surface rounded-xl shadow-md p-6 transition-shadow duration-200 hover:shadow-lg;
+  }
+
+  .form-input {
+    @apply w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200;
+  }
+
+  .heading-1 {
+    @apply font-heading text-4xl font-bold text-text-primary leading-tight;
+  }
+
+  .heading-2 {
+    @apply font-heading text-3xl font-semibold text-text-primary leading-tight;
+  }
+
+  .heading-3 {
+    @apply font-heading text-2xl font-semibold text-text-primary leading-tight;
+  }
+
+  .text-body {
+    @apply text-base text-text-secondary leading-relaxed;
+  }
+
+  .text-small {
+    @apply text-sm text-text-secondary leading-relaxed;
+  }
 }
 
+/* Animation classes */
+.fade-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.fade-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 200ms ease-out, transform 200ms ease-out;
+}
+
+.fade-exit {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.fade-exit-active {
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: opacity 200ms ease-in, transform 200ms ease-in;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Input placeholder styles */
+::placeholder {
+  color: #a0aec0;
+  opacity: 1;
+}
+
+/* Remove default select styling */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23a0aec0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;
+  background-size: 1.5em 1.5em;
+  padding-right: 2.5rem;
+}
+
+/* Fix for Firefox input placeholder */
+input::placeholder {
+  opacity: 1;
+}
+
+/* Fix for Edge and IE input placeholder */
+input::-webkit-input-placeholder {
+  color: #a0aec0;
+  opacity: 1;
+}
+
+input::-moz-placeholder {
+  color: #a0aec0;
+  opacity: 1;
+}

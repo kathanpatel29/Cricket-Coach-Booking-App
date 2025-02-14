@@ -1,22 +1,25 @@
-const User = require("../models/User");
-const bcrypt = require("bcryptjs");
-const generateToken = require("../utils/generateToken"); // Import the helper function
+const jwt = require('jsonwebtoken');
+const User = require('../models/User');
+const Coach = require('../models/Coach');
+const { AppError, catchAsync } = require('../utils/errorHandler');
+const { formatResponse } = require('../utils/responseFormatter');
 
-/**
- * @desc Register a new user (Client, Coach, Admin)
- * @route POST /api/auth/register
- */
+const signToken = (id) => {
+  return jwt.sign(
+    { id }, 
+    process.env.JWT_SECRET || 'your-secret-key', 
+    { expiresIn: '24h' }
+  );
+};
+
 exports.register = async (req, res) => {
   try {
-    const { name, email, password, role, admin_secret_key } = req.body;
+    const { name, email, password, role } = req.body;
 
-    // Check if user exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) return res.status(400).json({ message: "User already exists" });
-
-    // Check if admin secret key is required
-    if (role === "admin" && admin_secret_key !== process.env.ADMIN_SECRET_KEY) {
-      return res.status(403).json({ message: "Invalid admin secret key" });
+    // Check if user already exists
+    const userExists = await User.findOne({ email });
+    if (userExists) {
+      return res.status(400).json(formatResponse('error', 'User already exists'));
     }
 
     // Create user
@@ -24,108 +27,130 @@ exports.register = async (req, res) => {
       name,
       email,
       password,
-      role,
-      isApproved: role !== "coach", // Coaches need admin approval
+      role
     });
 
-    res.status(201).json({
-      token: generateToken(user._id), // Generate JWT token
-      user: { id: user._id, name: user.name, email: user.email, role: user.role },
+    // If registering as a coach, create coach profile with pending status
+    if (role === 'coach') {
+      await Coach.create({
+        user: user._id,
+        approvalStatus: 'pending',
+        specializations: [],
+        experience: 0,
+        hourlyRate: 0,
+        bio: '',
+        isApproved: false
+      });
+    }
+
+    // Generate token
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+      expiresIn: '30d'
     });
+
+    res.status(201).json(formatResponse('success', 'Registration successful', {
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      },
+      token
+    }));
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    console.error('Registration error:', error);
+    res.status(500).json(formatResponse('error', 'Registration failed'));
   }
 };
 
-/**
- * @desc Login User
- * @route POST /api/auth/login
- */
-exports.login = async (req, res) => {
+exports.login = catchAsync(async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, adminSecretKey } = req.body;
 
-    // Find user by email
-    const user = await User.findOne({ email });
-    if (!user) return res.status(401).json({ message: "Invalid email or password" });
+    // Check if email and password exist
+    if (!email || !password) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Please provide email and password'
+      });
+    }
+
+    // Find user
+    const user = await User.findOne({ email }).select('+password');
+    
+    if (!user) {
+      return res.status(401).json({
+        status: 'error',
+        message: 'Invalid email or password'
+      });
+    }
+
+    // If user is admin, verify admin secret key
+    if (user.role === 'admin') {
+      if (!adminSecretKey || adminSecretKey !== process.env.ADMIN_SECRET_KEY) {
+        return res.status(401).json({
+          status: 'error',
+          message: 'Invalid admin credentials'
+        });
+      }
+    }
 
     // Check password
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(401).json({ message: "Invalid email or password" });
+    const isPasswordCorrect = await user.comparePassword(password);
+    if (!isPasswordCorrect) {
+      return res.status(401).json({
+        status: 'error',
+        message: 'Invalid email or password'
+      });
+    }
 
+    // Generate token
+    const token = signToken(user._id);
 
+    // Remove password from response
+    user.password = undefined;
 
-    res.json({
-      token: generateToken(user._id), // Generate JWT token
-      user: { id: user._id, name: user.name, email: user.email, role: user.role },
+    res.status(200).json({
+      status: 'success',
+      token,
+      user
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Login error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Error logging in'
+    });
   }
-};
+});
 
-/**
- * @desc Get Current Logged-in User
- * @route GET /api/auth/me
- */
-exports.getMe = async (req, res) => {
+exports.getMe = catchAsync(async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select("-password");
-    res.json(user);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
+    const user = await User.findById(req.user.id).select('-password');
+    if (!user) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'User not found'
+      });
+    }
 
-/**
- * @desc Get all users (Admin Only)
- * @route GET /api/auth/admin/users
- */
-exports.getAllUsers = async (req, res) => {
-  try {
-    const users = await User.find().select("-password");
-    res.json(users);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-/**
- * @desc Delete a user (Admin Only)
- * @route DELETE /api/auth/admin/users/:id
- */
-exports.deleteUser = async (req, res) => {
-  try {
-    const user = await User.findByIdAndDelete(req.params.id);
-    if (!user) return res.status(404).json({ message: "User not found" });
-
-    res.json({ message: "User deleted successfully" });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-/**
- * @desc Get Admin Dashboard Stats
- * @route GET /api/auth/admin/stats
- */
-exports.getAdminStats = async (req, res) => {
-  try {
-    const totalUsers = await User.countDocuments();
-    const totalCoaches = await User.countDocuments({ role: "coach" });
-    const totalBookings = await require("../models/Booking").countDocuments();
-    const totalRevenue = await require("../models/Booking").aggregate([
-      { $match: { status: "paid" } },
-      { $group: { _id: null, total: { $sum: "$totalAmount" } } },
-    ]);
-
-    res.json({
-      totalUsers,
-      totalCoaches,
-      totalBookings,
-      totalRevenue: totalRevenue[0]?.total || 0,
+    res.status(200).json({
+      status: 'success',
+      user
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Get me error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Error fetching user data'
+    });
   }
-};
+});
+
+/**
+ * @desc Logout
+ * @route POST /api/auth/logout
+ */
+exports.logout = catchAsync(async (req, res) => {
+  successResponse(res, 200, null, 'Logged out successfully');
+});

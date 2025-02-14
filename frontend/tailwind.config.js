@@ -1,55 +1,72 @@
 /** @type {import('tailwindcss').Config} */
-module.exports = {
-  darkMode: ["class"],
-  content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}", "app/**/*.{ts,tsx}", "components/**/*.{ts,tsx}"],
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
   theme: {
     extend: {
       colors: {
         primary: {
           DEFAULT: "#0077b6",
-          foreground: "#ffffff",
+          dark: "#005b8e",
+          light: "#0096e3",
+          50: "#e6f3f9",
+          100: "#b3dbef",
+          200: "#80c4e4",
+          300: "#4dacda",
+          400: "#1a94cf",
+          500: "#0077b6",
+          600: "#005b8e",
+          700: "#004066",
+          800: "#00253d",
+          900: "#000b15"
         },
         secondary: {
           DEFAULT: "#f77f00",
-          foreground: "#ffffff",
+          dark: "#c66600",
+          light: "#ff9933"
         },
-        destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
+        surface: {
+          DEFAULT: "#ffffff",
+          secondary: "#f8f9fa"
         },
-        muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
+        text: {
+          primary: "#2d3748",
+          secondary: "#4a5568"
         },
-        accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
-        },
-        popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
-        },
-        card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
-        },
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
         background: "#f8f9fa",
         foreground: "#212529",
+        success: "#10b981",
+        warning: "#f59e0b",
+        error: "#ef4444",
+        info: "#3b82f6"
       },
       fontFamily: {
-        sans: ["Roboto", "sans-serif"],
-        poppins: ["Poppins", "sans-serif"],
+        sans: ['Inter', 'sans-serif'],
+        heading: ['Poppins', 'sans-serif']
+      },
+      spacing: {
+        '128': '32rem',
+        '144': '36rem',
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        '4xl': '2rem',
       },
+      boxShadow: {
+        'sm': '0px 1px 3px rgba(0, 0, 0, 0.05)',
+        'md': '0px 2px 4px rgba(0, 0, 0, 0.05), 0px 4px 6px rgba(0, 0, 0, 0.05)',
+        'lg': '0px 4px 6px rgba(0, 0, 0, 0.05), 0px 10px 15px rgba(0, 0, 0, 0.1)',
+      }
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [
+    require('tailwindcss-animate')
+  ],
+  // Ensure Tailwind doesn't conflict with MUI
+  important: '#root',
+  corePlugins: {
+    preflight: false,
+  }
 }
 

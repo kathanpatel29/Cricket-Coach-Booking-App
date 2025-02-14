@@ -1,10 +1,31 @@
 const express = require("express");
 const router = express.Router();
 const reportController = require("../controllers/reportController");
-const { protect, restrictTo } = require("../middleware/auth");
+const { protect, authorize } = require("../middleware/authMiddleware");
 
-router.get("/summary", protect, restrictTo("admin"), reportController.getSummaryReport);
-router.get("/earnings", protect, restrictTo("admin"), reportController.getEarningsReport);
-router.get("/user-activity", protect, restrictTo("admin"), reportController.getUserActivityReport);
+// All report routes need admin authentication
+router.use(protect);
+router.use(authorize("admin"));
+
+// Dashboard reports
+router.get("/summary", reportController.getSummaryReport);
+router.get("/earnings", reportController.getEarningsReport);
+router.get("/user-activity", reportController.getUserActivityReport);
+router.get("/user-stats", reportController.getUserStats);
+router.get("/booking-stats", reportController.getBookingStats);
+router.get("/revenue-stats", reportController.getRevenueStats);
+
+// Analytics reports
+router.get("/coach-performance", reportController.getCoachPerformanceReport);
+router.get("/client-analytics", reportController.getClientAnalytics);
+router.get("/booking-analytics", reportController.getBookingAnalytics);
+
+// Export reports
+router.get("/export/users", reportController.exportUserReport);
+router.get("/export/bookings", reportController.exportBookingReport);
+router.get("/export/earnings", reportController.exportEarningReport);
+
+// Custom report generation
+router.post("/custom", reportController.generateCustomReport);
 
 module.exports = router;

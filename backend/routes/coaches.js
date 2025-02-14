@@ -1,23 +1,42 @@
-const express = require("express")
-const router = express.Router()
-const coachController = require("../controllers/coachController")
-const { protect, restrictTo } = require("../middleware/auth")
+const express = require('express');
+const router = express.Router();
+const coachController = require('../controllers/coachController');
+const { protect, admin, coach } = require('../middleware/authMiddleware');
 
-// Admin routes - Move pendingCoaches BEFORE the :id routes
-router.get("/pendingCoaches", protect, restrictTo("admin"), coachController.pendingCoaches)
+// Protected coach routes
+router.get('/sessions', protect, coach, coachController.getCoachSessions);
+
+// Availability routes
+router.get('/availability', protect, coach, coachController.getAvailability);
+router.put('/availability', protect, coach, coachController.updateAvailability);
+router.delete('/availability/:dateId/slots/:slotId', protect, coach, coachController.deleteTimeSlot);
+
+// Emergency off routes
+router.get('/emergency-off', protect, coach, coachController.getEmergencyOff);
+router.post('/emergency-off', protect, coach, coachController.setEmergencyOff);
+
+// Profile routes
+router.get('/profile', protect, coach, coachController.getCoachProfile);
+router.post('/profile', protect, coach, coachController.createCoachProfile);
+router.put('/profile', protect, coach, coachController.updateCoachProfile);
+
+// Booking routes
+router.get('/bookings', protect, coach, coachController.getCoachBookings);
+router.patch('/bookings/:bookingId', protect, coach, coachController.updateBookingStatus);
+
+// Stats and analytics routes
+router.get('/dashboard/stats', protect, coach, coachController.getDashboardStats);
+router.get('/stats', protect, coach, coachController.getCoachStats);
+router.get('/earnings', protect, coach, coachController.getCoachEarnings);
+router.get('/reviews', protect, coach, coachController.getCoachReviews);
 
 // Public routes
-router.get("/", coachController.getAllCoaches)
-router.get("/:id", coachController.getCoachById)
-
-// Coach routes (requires authentication)
-router.post("/", protect, restrictTo("client"), coachController.createCoachProfile)
-router.get("/profile/me", protect, restrictTo("coach"), coachController.getCoachProfile)
-router.put("/profile", protect, restrictTo("coach"), coachController.updateCoachProfile)
-router.put("/availability", protect, restrictTo("coach"), coachController.updateAvailability)
+router.get('/', coachController.getAllCoaches);
+router.get('/:id/public', coachController.getCoachPublicProfile);
+router.get('/:id', coachController.getCoachById);
 
 // Admin routes
-router.patch("/:id/approve", protect, restrictTo("admin"), coachController.approveCoach)
-router.patch("/:id/reject", protect, restrictTo("admin"), coachController.rejectCoach)
+router.put('/:id/approve', protect, admin, coachController.approveCoach);
+router.put('/:id/reject', protect, admin, coachController.rejectCoach);
 
-module.exports = router
+module.exports = router;

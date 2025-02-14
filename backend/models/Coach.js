@@ -1,16 +1,204 @@
-const mongoose = require("mongoose")
+const mongoose = require('mongoose');
+
+// Define valid specializations
+const VALID_SPECIALIZATIONS = ['batting', 'bowling', 'fielding', 'wicket-keeping'];
+
+const availabilitySlotSchema = new mongoose.Schema({
+  date: {
+    type: String,
+    required: true
+  },
+  startTime: {
+    type: String,
+    required: true
+  },
+  endTime: {
+    type: String,
+    required: true
+  },
+  isBooked: {
+    type: Boolean,
+    default: false
+  }
+});
 
 const coachSchema = new mongoose.Schema({
-  user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-  specialization: { type: String, required: true },
-  experience: { type: Number, required: true },
-  hourlyRate: { type: Number, required: true },
-  bio: { type: String, required: true },
-  availability: [{ type: Date }],
-  ratings: [{ type: Number }],
-  reviews: [{ type: mongoose.Schema.Types.ObjectId, ref: "Review" }],
-  averageRating: { type: Number, default: 0 },
-})
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  specializations: [{
+    type: String,
+    enum: VALID_SPECIALIZATIONS,
+    required: true,
+    validate: {
+      validator: function(specializations) {
+        return specializations && specializations.length > 0;
+      },
+      message: 'At least one specialization is required'
+    }
+  }],
+  experience: {
+    type: Number,
+    required: true,
+    min: [0, 'Experience cannot be negative']
+  },
+  hourlyRate: {
+    type: Number,
+    required: true,
+    min: [0, 'Hourly rate cannot be negative']
+  },
+  bio: {
+    type: String,
+    required: true,
+    trim: true,
+    minlength: [10, 'Bio must be at least 10 characters long'],
+    maxlength: [500, 'Bio cannot exceed 500 characters']
+  },
+  availability: [availabilitySlotSchema],
+  emergencyOff: [{
+    date: {
+      type: String,
+      required: true
+    },
+    reason: {
+      type: String,
+      required: true
+    },
+    options: {
+      refund: {
+        type: Boolean,
+        default: true
+      },
+      reschedule: {
+        type: Boolean,
+        default: true
+      },
+      cancel: {
+        type: Boolean,
+        default: true
+      }
+    }
+  }],
+  certifications: String,
+  profileImage: String,
+  totalEarnings: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  totalSessions: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  ratings: [{
+    type: Number,
+    min: 1,
+    max: 5
+  }],
+  averageRating: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 5
+  },
+  reviews: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Review'
+  }],
+  isActive: {
+    type: Boolean,
+    default: true
+  },
+  approvalStatus: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected'],
+    default: 'pending'
+  },
+  approvalDate: {
+    type: Date
+  },
+  approvalNotes: {
+    type: String
+  },
+  rejectionReason: {
+    type: String
+  },
+  documents: [{
+    type: {
+      type: String,
+      enum: ['certification', 'identification', 'other'],
+      required: true
+    },
+    url: {
+      type: String,
+      required: true
+    },
+    name: {
+      type: String,
+      required: true
+    },
+    uploadDate: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+  verificationStatus: {
+    emailVerified: {
+      type: Boolean,
+      default: false
+    },
+    phoneVerified: {
+      type: Boolean,
+      default: false
+    },
+    documentsVerified: {
+      type: Boolean,
+      default: false
+    }
+  },
+  location: String,
+  preferredSessionDuration: {
+    type: Number,
+    default: 60
+  }
+}, {
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+});
 
-module.exports = mongoose.model("Coach", coachSchema)
+// Calculate average rating before saving
+coachSchema.pre('save', function(next) {
+  if (this.ratings.length > 0) {
+    this.averageRating = parseFloat((this.ratings.reduce((a, b) => a + b) / this.ratings.length).toFixed(1));
+  }
+  next();
+});
 
+// Add static method to get valid specializations
+coachSchema.statics.getValidSpecializations = function() {
+  return VALID_SPECIALIZATIONS;
+};
+
+// Virtual for total reviews count
+coachSchema.virtual('totalReviews').get(function() {
+  return this.reviews.length;
+});
+
+// Virtual for rating count
+coachSchema.virtual('ratingCount').get(function() {
+  return this.ratings.length;
+});
+
+// Index for better query performance
+coachSchema.index({ user: 1 });
+coachSchema.index({ specializations: 1 });
+coachSchema.index({ averageRating: -1 });
+coachSchema.index({ isApproved: 1 });
+coachSchema.index({ approvalStatus: 1 });
+coachSchema.index({ 'availability.date': 1 });
+
+module.exports = mongoose.model('Coach', coachSchema);
