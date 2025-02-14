@@ -15,14 +15,6 @@
       "dest": "/index.html"
     }
   ],
-  "env": {
-    "VITE_API_URL": "@vite_api_url",
-    "VITE_STRIPE_PUBLIC_KEY": "@vite_stripe_public_key"
-  },
-  "github": {
-    "silent": true,
-    "autoAlias": true
-  },
   "buildCommand": "npm run build",
   "outputDirectory": "dist"
 } 
