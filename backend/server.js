@@ -7,17 +7,6 @@ const compression = require('compression');
 // Load env vars
 dotenv.config();
 
-// Increase file descriptor limit if running on Node.js
-if (process.platform !== 'win32') {
-  try {
-    const limit = 65536;
-    require('fs').setMaxListeners(limit);
-    require('events').EventEmitter.defaultMaxListeners = limit;
-  } catch (err) {
-    console.warn('Could not update file descriptor limit:', err);
-  }
-}
-
 // Routes
 const authRoutes = require('./routes/auth.js');
 const userRoutes = require('./routes/users.js');
@@ -39,25 +28,20 @@ app.use(compression());
 app.use(cors({
   origin: [
     'https://cricket-coach-booking-app.vercel.app',
+    'https://cricket-coach-booking-app-frontend.vercel.app',
     'http://localhost:3000'
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  credentials: true
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+// Handle preflight requests
+app.options('*', cors());
 
 // Body parser middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// Cache control for static files
-const cacheTime = 86400000 * 30; // 30 days
-app.use(express.static(path.join(__dirname, '../frontend/dist'), {
-  maxAge: cacheTime,
-  etag: true
-}));
-
-// Serve static files
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // API Routes
 app.use('/api/auth', authRoutes);
