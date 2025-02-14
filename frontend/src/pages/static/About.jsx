@@ -18,7 +18,7 @@ const About = () => {
             <section>
               <h2 className="text-2xl font-semibold mb-4">Our Story</h2>
               <p className="text-gray-600">
-                Founded in 2023, CricCoach was born from a passion for cricket and a 
+                Founded in 2024, CricCoach was born from a passion for cricket and a 
                 desire to bridge the gap between talented coaches and eager learners. 
                 We've since helped thousands of players improve their skills through 
                 personalized coaching sessions.
