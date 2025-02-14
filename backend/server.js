@@ -39,8 +39,8 @@ app.use(compression());
 // CORS Configuration
 app.use(cors({
   origin: [
+    'https://cricket-coach-booking-app-backend.vercel.app',
     'https://cricket-coach-booking-app.vercel.app',
-    'https://cricket-coach-booking-app-frontend.vercel.app',
     'http://localhost:3000'
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
@@ -76,10 +76,9 @@ if (process.env.NODE_ENV === "production") {
   });
 } else {
   app.get('/', (req, res) => {
-    res.send('API is running...');
+    res.send('Cricket Coach Booking API is running');
   });
 }
-
 // Error Handler
 app.use(errorHandler);
 
@@ -89,3 +88,5 @@ connectDB();
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
+
+module.exports = app;
