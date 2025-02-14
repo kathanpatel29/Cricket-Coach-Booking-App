@@ -35,31 +35,25 @@ export const publicRoutes = [
 ];
 
 export const clientRoutes = [
-  { path: '/dashboard', element: <UserDashboard />, label: 'Dashboard', roles: ['client'] },
-  { path: '/book/:coachId', element: <Bookings />, label: 'Book Coach', roles: ['client'] },
-  { path: '/bookings', element: <MyBookings />, label: 'My Bookings', roles: ['client'] },
-  { path: '/my-bookings', element: <MyBookings />, label: 'My Bookings', roles: ['client'] },
-  { path: '/payments', element: <PaymentHistory />, label: 'Payment History', roles: ['client'] },
-  { path: '/payments/history', element: <PaymentHistory />, label: 'Payment History', roles: ['client'] },
-  { path: '/my-sessions', element: <SessionManagement />, label: 'My Sessions', roles: ['client'] },
+  { path: '/dashboard', element: <UserDashboard />, roles: ['client'] },
+  { path: '/book/:coachId', element: <Bookings />, roles: ['client'] },
+  { path: '/bookings', element: <MyBookings />, roles: ['client'] },
+  { path: '/payments', element: <PaymentHistory />, roles: ['client'] },
 ];
 
 export const coachRoutes = [
-  { path: '/coach/dashboard', element: <CoachDashboard />, label: 'Dashboard', roles: ['coach'] },
-  { path: '/coach/availability', element: <Availability />, label: 'Availability', roles: ['coach'] },
-  { path: '/coach/sessions', element: <SessionManagement />, label: 'Session Management', roles: ['coach'] },
-  { path: '/coach/earnings', element: <CoachEarnings />, label: 'My Earnings', roles: ['coach'] },
+  { path: '/coach/dashboard', element: <CoachDashboard />, roles: ['coach'] },
+  { path: '/coach/availability', element: <Availability />, roles: ['coach'] },
+  { path: '/coach/sessions', element: <SessionManagement />, roles: ['coach'] },
+  { path: '/coach/earnings', element: <CoachEarnings />, roles: ['coach'] },
 ];
 
 export const adminRoutes = [
-  { path: '/admin-dashboard', element: <AdminDashboard />, label: 'Admin Dashboard', roles: ['admin'] },
-  { path: '/admin/users', element: <UserManagement />, label: 'User Management', roles: ['admin'] },
-  { path: '/admin/reviews', element: <ReviewModeration />, label: 'Review Moderation', roles: ['admin'] },
-  { path: '/admin/transactions', element: <PaymentHistory />, label: 'Transaction Management', roles: ['admin'] },
+  { path: '/admin-dashboard', element: <AdminDashboard />, roles: ['admin'] },
+  { path: '/admin/users', element: <UserManagement />, roles: ['admin'] },
+  { path: '/admin/reviews', element: <ReviewModeration />, roles: ['admin'] },
 ];
 
 export const sharedProtectedRoutes = [
-  { path: '/profile', element: <Profile />, label: 'Profile', roles: ['client', 'coach'] },
-  { path: '/settings', element: <Profile />, label: 'Settings', roles: ['client', 'coach'] },
-  { path: '/account/delete', element: <Profile />, label: 'Delete Account', roles: ['client', 'coach', 'admin'] },
+  { path: '/profile', element: <Profile />, roles: ['client', 'coach', 'admin'] },
 ]; 
