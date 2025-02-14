@@ -25,35 +25,27 @@ const app = express();
 app.use(compression());
 
 // CORS Configuration
-const corsOptions = {
-  origin: process.env.NODE_ENV === 'production'
-    ? 'https://cricket-coach-booking-app.vercel.app'
-    : 'http://localhost:3000',
-  credentials: true, // Allows cookies and authentication headers
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://cricket-coach-booking-app.vercel.app'
+];
+
+app.use(cors({
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1) {
+      return callback(null, false);
+    }
+    return callback(null, true);
+  },
+  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: [
-    'Content-Type',
-    'Authorization',
-    'X-Requested-With',
-    'Accept',
-    'Origin',
-    'Cache-Control',
-    'Pragma'  // ✅ Added to fix the error
-  ],
-  exposedHeaders: ['Content-Range', 'X-Content-Range']
-};
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'Cache-Control', 'Pragma'],
+}));
 
-// Enable CORS Middleware
-app.use(cors(corsOptions));
-
-// ✅ Explicitly Handle Preflight OPTIONS Requests
-app.options('*', (req, res) => {
-  res.header("Access-Control-Allow-Origin", corsOptions.origin);
-  res.header("Access-Control-Allow-Methods", corsOptions.methods.join(','));
-  res.header("Access-Control-Allow-Headers", corsOptions.allowedHeaders.join(','));
-  res.header("Access-Control-Allow-Credentials", "true");
-  res.sendStatus(204); // No Content
-});
+// Simple OPTIONS handler
+app.options('*', cors());
 
 // Body parser middleware
 app.use(express.json());
