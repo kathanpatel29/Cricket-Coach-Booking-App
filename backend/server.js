@@ -26,10 +26,10 @@ app.use(compression());
 
 // CORS Configuration
 const corsOptions = {
-  origin: process.env.NODE_ENV === 'production' 
+  origin: process.env.NODE_ENV === 'production'
     ? 'https://cricket-coach-booking-app.vercel.app'
     : 'http://localhost:3000',
-  credentials: true,
+  credentials: true, // Allows cookies and authentication headers
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: [
     'Content-Type',
@@ -38,14 +38,22 @@ const corsOptions = {
     'Accept',
     'Origin',
     'Cache-Control',
-    'Pragma'
-  ]
+    'Pragma'  // ✅ Added to fix the error
+  ],
+  exposedHeaders: ['Content-Range', 'X-Content-Range']
 };
 
+// Enable CORS Middleware
 app.use(cors(corsOptions));
 
-// Handle preflight requests
-app.options('*', cors(corsOptions));
+// ✅ Explicitly Handle Preflight OPTIONS Requests
+app.options('*', (req, res) => {
+  res.header("Access-Control-Allow-Origin", corsOptions.origin);
+  res.header("Access-Control-Allow-Methods", corsOptions.methods.join(','));
+  res.header("Access-Control-Allow-Headers", corsOptions.allowedHeaders.join(','));
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.sendStatus(204); // No Content
+});
 
 // Body parser middleware
 app.use(express.json());
@@ -80,12 +88,12 @@ app.use('*', (req, res) => {
 // Error Handler
 app.use(errorHandler);
 
-// Connect to database
+// Connect to database before starting server
 connectDB();
 
 const startServer = async () => {
   const PORT = process.env.PORT || 5000;
-  
+
   try {
     const server = app.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`);
