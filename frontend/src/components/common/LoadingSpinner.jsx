@@ -1,4 +1,5 @@
-import { CircularProgress, Box } from '../shared/MuiComponents.jsx';
+import React from 'react';
+import { CircularProgress, Box } from '@mui/material';
 
 const LoadingSpinner = () => {
   return (
@@ -6,7 +7,7 @@ const LoadingSpinner = () => {
       display="flex"
       justifyContent="center"
       alignItems="center"
-      minHeight="200px"
+      minHeight="400px"
     >
       <CircularProgress />
     </Box>

@@ -25,19 +25,27 @@ const app = express();
 app.use(compression());
 
 // CORS Configuration
-app.use(cors({
-  origin: [
-    'https://cricket-coach-booking-app.vercel.app',
-    'https://cricket-coach-booking-app-frontend.vercel.app',
-    'http://localhost:3000'
-  ],
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+const corsOptions = {
+  origin: process.env.NODE_ENV === 'production' 
+    ? 'https://cricket-coach-booking-app.vercel.app'
+    : 'http://localhost:3000',
   credentials: true,
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+    'Cache-Control',
+    'Pragma'
+  ]
+};
+
+app.use(cors(corsOptions));
 
 // Handle preflight requests
-app.options('*', cors());
+app.options('*', cors(corsOptions));
 
 // Body parser middleware
 app.use(express.json());
@@ -75,9 +83,41 @@ app.use(errorHandler);
 // Connect to database
 connectDB();
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+const startServer = async () => {
+  const PORT = process.env.PORT || 5000;
+  
+  try {
+    const server = app.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT}`);
+    });
+
+    // Handle server errors
+    server.on('error', (error) => {
+      if (error.code === 'EADDRINUSE') {
+        console.log(`Port ${PORT} is busy, trying ${PORT + 1}`);
+        server.close();
+        app.listen(PORT + 1);
+      } else {
+        console.error('Server error:', error);
+      }
+    });
+
+    // Handle graceful shutdown
+    process.on('SIGTERM', () => {
+      console.log('SIGTERM received. Shutting down gracefully...');
+      server.close(() => {
+        console.log('Server closed');
+        process.exit(0);
+      });
+    });
+
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
+};
+
+// Start the server
+startServer();
 
 module.exports = app;

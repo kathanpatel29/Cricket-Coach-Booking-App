@@ -15,10 +15,14 @@ import {
   Rating,
   Chip,
   Alert,
-  CircularProgress
+  CircularProgress,
+  Avatar,
+  CardActions,
+  Paper
 } from '@mui/material';
 import { coachService } from '../../../services/api';
 import { useAuth } from '../../../contexts/AuthContext';
+import LoadingSpinner from '../../common/LoadingSpinner';
 
 const CoachList = () => {
   const navigate = useNavigate();
@@ -35,22 +39,18 @@ const CoachList = () => {
 
   useEffect(() => {
     fetchCoaches();
-  }, [filters]);
+  }, []);
 
   const fetchCoaches = async () => {
     try {
       setLoading(true);
-      const response = await coachService.getAll(filters);
+      const response = await coachService.getAll();
       if (response?.data?.data?.coaches) {
-        // Only show approved coaches
-        const approvedCoaches = response.data.data.coaches.filter(
-          coach => coach.approvalStatus === 'approved'
-        );
-        setCoaches(approvedCoaches);
+        // Only show coaches that are approved and have availability
+        setCoaches(response.data.data.coaches);
       }
     } catch (err) {
-      console.error('Error fetching coaches:', err);
-      setError(err.response?.data?.message || 'Error fetching coaches');
+      setError(err.response?.data?.message || 'Failed to fetch coaches');
     } finally {
       setLoading(false);
     }
@@ -77,167 +77,94 @@ const CoachList = () => {
   };
 
   if (loading) {
+    return <LoadingSpinner />;
+  }
+
+  if (error) {
     return (
-      <Box display="flex" justifyContent="center" p={3}>
-        <CircularProgress />
-      </Box>
+      <Alert severity="error" sx={{ mb: 2 }}>
+        {error}
+      </Alert>
     );
   }
 
-  // Show message for pending coaches
-  if (user?.role === 'coach' && user?.approvalStatus === 'pending') {
+  if (coaches.length === 0) {
     return (
-      <Box p={3}>
-        <Alert severity="info" sx={{ mb: 3 }}>
-          Your coach profile is pending approval. Once approved, you will be listed here and can:
-          <ul style={{ marginTop: '10px', marginLeft: '20px', listStyleType: 'disc' }}>
-            <li>Accept booking requests</li>
-            <li>Manage your availability</li>
-            <li>Access earnings dashboard</li>
-            <li>Receive client reviews</li>
-          </ul>
-        </Alert>
+      <Box sx={{ p: 3 }}>
+        <Paper sx={{ p: 4, textAlign: 'center' }}>
+          <Typography variant="h6" gutterBottom>
+            No Coaches Available
+          </Typography>
+          <Typography color="textSecondary">
+            There are currently no coaches available for booking. Please check back later.
+          </Typography>
+        </Paper>
       </Box>
     );
   }
 
   return (
-    <Box p={3}>
+    <Box sx={{ p: 3 }}>
       <Typography variant="h4" gutterBottom>
-        Find a Coach
+        Available Coaches
       </Typography>
-
-      {error && (
-        <Alert severity="error" sx={{ mb: 3 }}>
-          {error}
-        </Alert>
-      )}
-
-      {/* Filters */}
-      <Grid container spacing={2} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={3}>
-          <FormControl fullWidth>
-            <InputLabel>Specialization</InputLabel>
-            <Select
-              name="specialization"
-              value={filters.specialization}
-              onChange={handleFilterChange}
-              label="Specialization"
-            >
-              <MenuItem value="">All</MenuItem>
-              <MenuItem value="batting">Batting</MenuItem>
-              <MenuItem value="bowling">Bowling</MenuItem>
-              <MenuItem value="fielding">Fielding</MenuItem>
-              <MenuItem value="wicket-keeping">Wicket Keeping</MenuItem>
-            </Select>
-          </FormControl>
-        </Grid>
-        <Grid item xs={12} sm={3}>
-          <FormControl fullWidth>
-            <InputLabel>Experience</InputLabel>
-            <Select
-              name="experience"
-              value={filters.experience}
-              onChange={handleFilterChange}
-              label="Experience"
-            >
-              <MenuItem value="">All</MenuItem>
-              <MenuItem value="0-2">0-2 years</MenuItem>
-              <MenuItem value="3-5">3-5 years</MenuItem>
-              <MenuItem value="5-10">5-10 years</MenuItem>
-              <MenuItem value="10+">10+ years</MenuItem>
-            </Select>
-          </FormControl>
-        </Grid>
-        <Grid item xs={12} sm={3}>
-          <FormControl fullWidth>
-            <InputLabel>Rating</InputLabel>
-            <Select
-              name="rating"
-              value={filters.rating}
-              onChange={handleFilterChange}
-              label="Rating"
-            >
-              <MenuItem value="">All</MenuItem>
-              <MenuItem value="4">4+ Stars</MenuItem>
-              <MenuItem value="3">3+ Stars</MenuItem>
-              <MenuItem value="2">2+ Stars</MenuItem>
-            </Select>
-          </FormControl>
-        </Grid>
-        <Grid item xs={12} sm={3}>
-          <TextField
-            fullWidth
-            label="Search"
-            name="search"
-            value={filters.search}
-            onChange={handleFilterChange}
-            placeholder="Search by name or specialization"
-          />
-        </Grid>
-      </Grid>
-
-      {/* Coach List */}
-      {coaches.length === 0 ? (
-        <Alert severity="info">
-          No coaches found matching your criteria.
-        </Alert>
-      ) : (
-        <Grid container spacing={3}>
-          {coaches.map((coach) => (
-            <Grid item xs={12} sm={6} md={4} key={coach._id}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    {coach.name}
-                  </Typography>
-                  
-                  <Box sx={{ mb: 2 }}>
-                    <Rating value={coach.averageRating || 0} readOnly precision={0.5} />
-                    <Typography variant="body2" color="text.secondary">
-                      ({coach.totalReviews || 0} reviews)
+      <Grid container spacing={3}>
+        {coaches.map((coach) => (
+          <Grid item xs={12} sm={6} md={4} key={coach._id}>
+            <Card>
+              <CardContent>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                  <Avatar
+                    src={coach.profileImage}
+                    alt={coach.name}
+                    sx={{ width: 56, height: 56, mr: 2 }}
+                  />
+                  <Box>
+                    <Typography variant="h6">{coach.name}</Typography>
+                    <Rating value={coach.rating} readOnly precision={0.5} />
+                    <Typography variant="body2" color="textSecondary">
+                      {coach.totalReviews} reviews
                     </Typography>
                   </Box>
+                </Box>
 
-                  <Typography color="text.secondary" gutterBottom>
-                    Experience: {coach.experience} years
-                  </Typography>
+                <Typography variant="body2" color="textSecondary" gutterBottom>
+                  Experience: {coach.experience} years
+                </Typography>
 
-                  <Box sx={{ mb: 2 }}>
-                    {coach.specializations?.map((spec) => (
-                      <Chip
-                        key={spec}
-                        label={spec}
-                        size="small"
-                        sx={{ mr: 0.5, mb: 0.5 }}
-                      />
-                    ))}
-                  </Box>
+                <Box sx={{ mb: 2 }}>
+                  {coach.specializations.map((spec, index) => (
+                    <Chip
+                      key={index}
+                      label={spec}
+                      size="small"
+                      sx={{ mr: 0.5, mb: 0.5 }}
+                    />
+                  ))}
+                </Box>
 
-                  <Typography variant="h6" color="primary" gutterBottom>
-                    ${coach.hourlyRate}/hour
-                  </Typography>
+                <Typography variant="body2" sx={{ mb: 2 }}>
+                  {coach.bio.substring(0, 150)}...
+                </Typography>
 
-                  <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
-                    <Button
-                      variant="outlined"
-                      onClick={() => handleViewProfile(coach._id)}
-                    >
-                      View Profile
-                    </Button>
-                    <Button
-                      variant="contained"
-                      onClick={() => handleBookSession(coach._id)}
-                    >
-                      Book Session
-                    </Button>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
-      )}
+                <Typography variant="h6" color="primary" gutterBottom>
+                  ${coach.hourlyRate}/hour
+                </Typography>
+              </CardContent>
+
+              <CardActions>
+                <Button
+                  fullWidth
+                  variant="contained"
+                  onClick={() => handleViewProfile(coach._id)}
+                >
+                  View Profile & Book
+                </Button>
+              </CardActions>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
     </Box>
   );
 };

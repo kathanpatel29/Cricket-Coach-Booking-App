@@ -73,22 +73,23 @@ exports.deleteUser = catchAsync(async (req, res) => {
 });
 
 // Coach Management
-exports.getPendingCoaches = async (req, res) => {
+exports.getPendingCoaches = catchAsync(async (req, res) => {
   try {
     const pendingCoaches = await Coach.find({ approvalStatus: 'pending' })
       .populate('user', 'name email phone')
       .sort({ createdAt: -1 });
 
-    res.json(formatResponse('success', 'Pending coaches retrieved successfully', {
-      coaches: pendingCoaches
+    return res.status(200).json(formatResponse('success', 'Pending coaches retrieved successfully', {
+      coaches: pendingCoaches || [],
+      total: pendingCoaches?.length || 0
     }));
   } catch (error) {
     console.error('Error fetching pending coaches:', error);
-    res.status(500).json(formatResponse('error', 'Failed to fetch pending coaches'));
+    throw new AppError('Failed to fetch pending coaches', 500);
   }
-};
+});
 
-exports.approveCoach = async (req, res) => {
+exports.approveCoach = catchAsync(async (req, res) => {
   try {
     const { id } = req.params;
     const { notes } = req.body;
@@ -119,7 +120,7 @@ exports.approveCoach = async (req, res) => {
     console.error('Error approving coach:', error);
     res.status(500).json(formatResponse('error', 'Failed to approve coach'));
   }
-};
+});
 
 exports.rejectCoach = async (req, res) => {
   try {

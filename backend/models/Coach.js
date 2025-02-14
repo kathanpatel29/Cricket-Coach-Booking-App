@@ -3,23 +3,15 @@ const mongoose = require('mongoose');
 // Define valid specializations
 const VALID_SPECIALIZATIONS = ['batting', 'bowling', 'fielding', 'wicket-keeping'];
 
-const availabilitySlotSchema = new mongoose.Schema({
+const availabilitySchema = new mongoose.Schema({
   date: {
-    type: String,
+    type: Date,
     required: true
   },
-  startTime: {
+  slots: [{
     type: String,
     required: true
-  },
-  endTime: {
-    type: String,
-    required: true
-  },
-  isBooked: {
-    type: Boolean,
-    default: false
-  }
+  }]
 });
 
 const coachSchema = new mongoose.Schema({
@@ -30,33 +22,26 @@ const coachSchema = new mongoose.Schema({
   },
   specializations: [{
     type: String,
-    enum: VALID_SPECIALIZATIONS,
-    required: true,
-    validate: {
-      validator: function(specializations) {
-        return specializations && specializations.length > 0;
-      },
-      message: 'At least one specialization is required'
-    }
+    enum: ['batting', 'bowling', 'fielding', 'wicket-keeping', 'spin-bowling', 'fast-bowling', 'mental-coaching', 'fitness', 'strategy'],
+    required: true
   }],
   experience: {
     type: Number,
     required: true,
-    min: [0, 'Experience cannot be negative']
+    min: 0
   },
   hourlyRate: {
     type: Number,
     required: true,
-    min: [0, 'Hourly rate cannot be negative']
+    min: 0
   },
   bio: {
     type: String,
     required: true,
-    trim: true,
-    minlength: [10, 'Bio must be at least 10 characters long'],
-    maxlength: [500, 'Bio cannot exceed 500 characters']
+    minlength: 10,
+    maxlength: 1000
   },
-  availability: [availabilitySlotSchema],
+  availability: [availabilitySchema],
   emergencyOff: [{
     date: {
       type: String,
@@ -163,6 +148,29 @@ const coachSchema = new mongoose.Schema({
   preferredSessionDuration: {
     type: Number,
     default: 60
+  },
+  hasSetAvailability: {
+    type: Boolean,
+    default: false
+  },
+  isProfileComplete: {
+    type: Boolean,
+    default: false
+  },
+  rating: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 5
+  },
+  status: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected'],
+    default: 'pending'
+  },
+  isAvailable: {
+    type: Boolean,
+    default: true
   }
 }, {
   timestamps: true,
@@ -173,8 +181,14 @@ const coachSchema = new mongoose.Schema({
 // Calculate average rating before saving
 coachSchema.pre('save', function(next) {
   if (this.ratings.length > 0) {
-    this.averageRating = parseFloat((this.ratings.reduce((a, b) => a + b) / this.ratings.length).toFixed(1));
+    this.rating = parseFloat((this.ratings.reduce((a, b) => a + b) / this.ratings.length).toFixed(1));
   }
+  this.isProfileComplete = !!(
+    this.specializations.length &&
+    this.experience &&
+    this.bio &&
+    this.hourlyRate
+  );
   next();
 });
 
@@ -201,4 +215,33 @@ coachSchema.index({ isApproved: 1 });
 coachSchema.index({ approvalStatus: 1 });
 coachSchema.index({ 'availability.date': 1 });
 
-module.exports = mongoose.model('Coach', coachSchema);
+// Method to check if coach is available for booking
+coachSchema.methods.isAvailableForBooking = function() {
+  return this.isProfileComplete && 
+         this.hasSetAvailability && 
+         this.status === 'approved';
+};
+
+// Method to check if a time slot is available
+coachSchema.methods.isTimeSlotAvailable = function(date, timeSlot) {
+  const dayAvailability = this.availability.find(
+    a => a.date.toDateString() === new Date(date).toDateString()
+  );
+  return dayAvailability && dayAvailability.slots.includes(timeSlot);
+};
+
+// Method to mark a time slot as booked
+coachSchema.methods.markTimeSlotAsBooked = async function(date, timeSlot) {
+  const dayAvailability = this.availability.find(
+    a => a.date.toDateString() === new Date(date).toDateString()
+  );
+  if (dayAvailability) {
+    dayAvailability.slots = dayAvailability.slots.filter(slot => slot !== timeSlot);
+    return await this.save();
+  }
+  return false;
+};
+
+const Coach = mongoose.model('Coach', coachSchema);
+
+module.exports = Coach;

@@ -60,63 +60,71 @@ exports.updateCoachProfile = async (req, res) => {
   }
 };
 
-// Get all coaches (public)
-exports.getAllCoaches = catchAsync(async (req, res) => {
-  const { specialization, experience, rating, search } = req.query;
-  
-  // Build query
-  const query = { 
-    approvalStatus: 'approved',
-    'availability.0': { $exists: true } // Only show coaches with at least one availability entry
-  };
-  
-  // Add filters if provided
-  if (specialization) {
-    query.specializations = specialization;
-  }
-  
-  if (experience) {
-    const [min, max] = experience.split('-').map(Number);
-    if (max) {
-      query.experience = { $gte: min, $lte: max };
-    } else {
-      // Handle "10+" case
-      query.experience = { $gte: min };
-    }
-  }
-  
-  if (rating) {
-    query.averageRating = { $gte: Number(rating) };
-  }
-  
-  if (search) {
-    query.$or = [
-      { 'user.name': { $regex: search, $options: 'i' } },
-      { bio: { $regex: search, $options: 'i' } }
-    ];
-  }
+// Get all coaches (only approved and available)
+exports.getAllCoaches = async (req, res) => {
+  try {
+    const coaches = await Coach.find({
+      status: 'approved',
+      isProfileComplete: true,
+      hasSetAvailability: true
+    }).populate('user', 'name email profileImage');
 
-  const coaches = await Coach.find(query)
-    .populate('user', 'name email profileImage')
-    .select('-approvalNotes -rejectionNotes')
-    .sort('-averageRating');
-  
-  res.json(formatResponse('success', 'Coaches retrieved successfully', { coaches }));
-});
+    res.json({
+      data: {
+        coaches: coaches.map(coach => ({
+          _id: coach._id,
+          name: coach.user.name,
+          email: coach.user.email,
+          profileImage: coach.user.profileImage,
+          specializations: coach.specializations,
+          experience: coach.experience,
+          bio: coach.bio,
+          hourlyRate: coach.hourlyRate,
+          rating: coach.rating,
+          totalReviews: coach.totalReviews
+        }))
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
+// Get coach by ID (with availability check)
 exports.getCoachById = async (req, res) => {
   try {
     const coach = await Coach.findById(req.params.id)
-      .populate('user', 'name email')
-      .populate('reviews');
+      .populate('user', 'name email profileImage');
 
     if (!coach) {
-      return res.status(404).json(formatResponse('error', 'Coach not found'));
+      return res.status(404).json({ message: 'Coach not found' });
     }
 
-    res.json(formatResponse('success', 'Coach retrieved successfully', { coach }));
+    if (!coach.isAvailableForBooking()) {
+      return res.status(403).json({ 
+        message: 'This coach is not available for booking at the moment' 
+      });
+    }
+
+    res.json({
+      data: {
+        coach: {
+          _id: coach._id,
+          name: coach.user.name,
+          email: coach.user.email,
+          profileImage: coach.user.profileImage,
+          specializations: coach.specializations,
+          experience: coach.experience,
+          bio: coach.bio,
+          hourlyRate: coach.hourlyRate,
+          availability: coach.availability,
+          rating: coach.rating,
+          totalReviews: coach.totalReviews
+        }
+      }
+    });
   } catch (error) {
-    res.status(500).json(formatResponse('error', error.message));
+    res.status(500).json({ message: error.message });
   }
 };
 
@@ -152,69 +160,24 @@ exports.getAvailability = async (req, res) => {
   }
 };
 
-// Update coach's availability
+// Update availability
 exports.updateAvailability = async (req, res) => {
   try {
-    const { availability } = req.body;
-    const { formatResponse } = require('../utils/responseFormatter');
-
-    // Validate availability data
-    if (!Array.isArray(availability)) {
-      return res.status(400).json(formatResponse('error', 'Availability must be an array'));
-    }
-
-    // Validate each time slot
-    const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
-    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-
-    for (const slot of availability) {
-      // Check required fields
-      if (!slot.date || !slot.startTime || !slot.endTime) {
-        return res.status(400).json(formatResponse('error', 'Each slot must have date, startTime, and endTime'));
-      }
-
-      // Validate date format
-      if (!dateRegex.test(slot.date)) {
-        return res.status(400).json(formatResponse('error', `Invalid date format for ${slot.date}. Use YYYY-MM-DD format`));
-      }
-
-      // Validate time format
-      if (!timeRegex.test(slot.startTime) || !timeRegex.test(slot.endTime)) {
-        return res.status(400).json(formatResponse('error', `Invalid time format for ${slot.date}. Use HH:mm format`));
-      }
-
-      // Validate date is not in the past
-      const slotDate = new Date(slot.date);
-      const now = new Date();
-      now.setHours(0, 0, 0, 0);
-      
-      if (slotDate < now) {
-        return res.status(400).json(formatResponse('error', `Cannot set availability for past date: ${slot.date}`));
-      }
-
-      // Validate end time is after start time
-      const startDateTime = new Date(`${slot.date}T${slot.startTime}`);
-      const endDateTime = new Date(`${slot.date}T${slot.endTime}`);
-      
-      if (startDateTime >= endDateTime) {
-        return res.status(400).json(formatResponse('error', `End time must be after start time for ${slot.date}`));
-      }
-    }
-
-    // Find the coach
     const coach = await Coach.findOne({ user: req.user._id });
     if (!coach) {
-      return res.status(404).json(formatResponse('error', 'Coach profile not found'));
+      return res.status(404).json({ message: 'Coach not found' });
     }
 
-    // Update availability
-    coach.availability = availability;
+    coach.availability = req.body.availability;
+    coach.hasSetAvailability = req.body.availability.length > 0;
     await coach.save();
 
-    return res.json(formatResponse('success', 'Availability updated successfully', { availability: coach.availability }));
+    res.json({
+      message: 'Availability updated successfully',
+      data: { availability: coach.availability }
+    });
   } catch (error) {
-    console.error('Update availability error:', error);
-    return res.status(500).json(formatResponse('error', 'Failed to update availability'));
+    res.status(500).json({ message: error.message });
   }
 };
 

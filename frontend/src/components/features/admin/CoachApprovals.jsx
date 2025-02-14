@@ -39,11 +39,18 @@ const CoachApprovals = () => {
   const fetchPendingCoaches = async () => {
     try {
       setLoading(true);
+      setError('');
       const response = await adminService.getPendingCoaches();
-      setPendingCoaches(response.data.data.coaches || []);
+      
+      if (response?.data?.data) {
+        setPendingCoaches(response.data.data.coaches || []);
+      } else {
+        setPendingCoaches([]);
+      }
     } catch (error) {
       console.error('Error fetching pending coaches:', error);
-      setError(error.response?.data?.message || 'Error fetching pending coaches');
+      setError('Unable to load pending coach approvals. Please try again later.');
+      setPendingCoaches([]);
     } finally {
       setLoading(false);
     }
@@ -225,7 +232,7 @@ const CoachApprovals = () => {
           <Grid item xs={12}>
             <Paper sx={{ p: 3, textAlign: 'center' }}>
               <Typography color="textSecondary">
-                No pending coach approvals
+                No pending coach approvals at this time
               </Typography>
             </Paper>
           </Grid>
