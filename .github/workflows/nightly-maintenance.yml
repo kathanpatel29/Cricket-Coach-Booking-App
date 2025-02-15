@@ -1,0 +1,174 @@
+name: Nightly Testing & Maintenance
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Run at midnight UTC every day
+  workflow_dispatch:      # Allow manual trigger
+
+jobs:
+  dependency-updates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          
+      - name: Check for outdated packages
+        id: outdated
+        run: |
+          cd backend && npm outdated || true
+          cd ../frontend && npm outdated || true
+          
+      - name: Create dependency update PR
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'chore(deps): update dependencies'
+          title: '?? Automated Dependency Updates'
+          body: |
+            Automated dependency updates by the nightly maintenance workflow.
+            Please review the changes before merging.
+          branch: automated-dependency-updates
+          delete-branch: true
+
+  code-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          
+      - name: Run ESLint with auto-fix
+        run: |
+          cd backend && npm ci && npm run lint:fix
+          cd ../frontend && npm ci && npm run lint:fix
+          
+      - name: Run Prettier
+        run: |
+          cd backend && npx prettier --write "**/*.{js,jsx,ts,tsx,json}"
+          cd ../frontend && npx prettier --write "**/*.{js,jsx,ts,tsx,json}"
+          
+      - name: Create code style PR
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: '?? style: auto-fix code style issues'
+          title: '?? Automated Code Style Fixes'
+          body: |
+            Automated code style fixes by the nightly maintenance workflow.
+            - ESLint auto-fixes applied
+            - Prettier formatting applied
+          branch: automated-style-fixes
+          delete-branch: true
+
+  backend-tests:
+    runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo:latest
+        ports:
+          - 27017:27017
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          
+      - name: Install Dependencies
+        run: cd backend && npm ci
+        
+      - name: Run Tests
+        run: cd backend && npm run test:ci
+        env:
+          NODE_ENV: test
+          MONGODB_URI: mongodb://localhost:27017/test-db
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-results
+          path: backend/coverage
+
+  frontend-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          
+      - name: Install Dependencies
+        run: cd frontend && npm ci
+        
+      - name: Run Unit Tests
+        run: cd frontend && npm run test:ci
+        env:
+          VITE_API_URL: http://localhost:5000
+          VITE_STRIPE_PUBLIC_KEY: ${{ secrets.STRIPE_PUBLIC_KEY }}
+          
+      - name: Run E2E Tests
+        uses: cypress-io/github-action@v6
+        with:
+          working-directory: frontend
+          build: npm run build
+          start: npm run dev
+          wait-on: http://localhost:5173
+          browser: chrome
+          headless: true
+        env:
+          CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
+          
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-test-results
+          path: |
+            frontend/coverage
+            frontend/cypress/videos
+            frontend/cypress/screenshots
+
+  notify:
+    needs: [backend-tests, frontend-tests, code-quality]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Notify Slack
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          fields: repo,message,commit,author,action,eventName,ref,workflow,job,took
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        if: always()
+        
+      - name: Send Email Notification
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.EMAIL_USER }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "?? Nightly Tests Report - ${{ job.status }}"
+          body: |
+            Nightly maintenance workflow completed with status: ${{ job.status }}
+            
+            Check the GitHub Actions page for detailed results:
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          to: ${{ secrets.EMAIL_USER }}
+          from: Cricket Coach App CI
+        if: always()
