@@ -1,201 +1,172 @@
-# Cricket Coach Booking App 🏏
+# Cricket Coach Booking Application
 
-A full-stack web application for booking cricket coaching sessions, built with the MERN stack (MongoDB, Express.js, React.js, Node.js).
+A full-stack web application for booking cricket coaching sessions, managing coaches, and handling appointments.
 
-## Features 🌟
+Live Demo: [https://cric-coach-app.vercel.app](https://cric-coach-app.vercel.app)
 
-### For Clients
-- Browse and search for cricket coaches
-- View coach profiles, specializations, and ratings
-- Book coaching sessions
-- Manage bookings (reschedule/cancel)
-- Real-time payment processing with Stripe
-- Submit reviews and ratings
-- Profile management with image upload
-- Password change functionality
-- View booking history
+## Features
 
-### For Coaches
-- Create and manage coaching profile
-- Set availability and time slots
-- Manage session bookings
-- Track earnings and performance
-- View client reviews and ratings
-- Emergency time-off management
-- Profile customization with image upload
-- Session feedback system
+- User registration and authentication
+- Coach profile management
+- Session booking and scheduling
+- Secure payment processing
+- Admin dashboard
+- Email notifications
+- Multi-language support (English & Hindi)
 
-### For Admins
-- Approve/reject coach applications
-- Manage users and coaches
-- Monitor bookings and payments
-- Generate reports and analytics
-- Review moderation
-- Export data in various formats
-- System performance monitoring
+## Tech Stack
 
-## Tech Stack 💻
+- Frontend: React.js, Vite, Material UI, Tailwind CSS
+- Backend: Node.js, Express.js
+- Database: MongoDB
+- Authentication: JWT
+- Payment: Stripe
+- Email: Nodemailer
+- Testing: Jest
+- Deployment: Vercel
 
-### Frontend
-- React.js with Vite
-- Material-UI (MUI) for UI components
-- TailwindCSS for styling
-- React Router for navigation
-- Axios for API requests
-- Stripe for payments
-- React-Toastify for notifications
-- Recharts for analytics
+## Quick Start
 
-### Backend
-- Node.js & Express.js
-- MongoDB with Mongoose
-- JWT for authentication
-- Multer for file uploads
-- Stripe API integration
-- Express-validator for validation
-- Bcrypt for password hashing
-- Cors for cross-origin requests
+1. Visit [https://cric-coach-app.vercel.app](https://cric-coach-app.vercel.app)
+2. Register as a client or coach
+3. Browse available coaches or set up your coaching profile
+4. Book sessions or manage your coaching schedule
+5. Process payments securely through Stripe
+6. Receive email confirmations for bookings and payments
 
-## Getting Started 🚀
+## For Development
 
 ### Prerequisites
+
 - Node.js (v14 or higher)
 - MongoDB
+- Gmail account (for email notifications)
 - Stripe account
-- npm or yarn
-
-### Environment Variables
-
-#### Frontend (.env)
-\`\`\`env
-VITE_API_URL=http://localhost:5000/api
-VITE_STRIPE_PUBLIC_KEY=your_stripe_public_key
-\`\`\`
-
-#### Backend (.env)
-\`\`\`env
-MONGODB_URI=your_mongodb_uri
-JWT_SECRET=your_jwt_secret
-STRIPE_SECRET_KEY=your_stripe_secret_key
-PORT=5000
-NODE_ENV=development
-\`\`\`
 
 ### Installation
 
-1. Clone the repository
-\`\`\`bash
+1. Clone the repository:
+```bash
 git clone https://github.com/yourusername/cricket-coach-booking-app.git
 cd cricket-coach-booking-app
-\`\`\`
+```
 
-2. Install frontend dependencies
-\`\`\`bash
-cd frontend
-npm install
-\`\`\`
-
-3. Install backend dependencies
-\`\`\`bash
+2. Install dependencies:
+```bash
+# Install backend dependencies
 cd backend
 npm install
-\`\`\`
 
-4. Start the development servers
+# Install frontend dependencies
+cd ../frontend
+npm install
+```
 
-Frontend:
-\`\`\`bash
-cd frontend
-npm run dev
-\`\`\`
+3. Configure environment variables:
 
-Backend:
-\`\`\`bash
+Backend (.env):
+```
+PORT=5000
+MONGODB_URI=your_mongodb_uri
+STRIPE_SECRET_KEY=your_stripe_secret_key
+JWT_SECRET=your_jwt_secret
+EMAIL_USER=your_gmail
+EMAIL_PASSWORD=your_gmail_app_password
+```
+
+Frontend (.env):
+```
+VITE_API_URL=http://localhost:5000
+VITE_STRIPE_PUBLIC_KEY=your_stripe_public_key
+```
+
+4. Run the application:
+
+Development:
+```bash
+# Run backend
 cd backend
 npm run dev
-\`\`\`
 
-## Deployment 🌐
+# Run frontend
+cd frontend
+npm run dev
+```
 
-### Frontend (Vercel)
-1. Create a Vercel account
-2. Install Vercel CLI: \`npm i -g vercel\`
-3. Configure environment variables in Vercel dashboard
-4. Deploy: \`vercel\`
+Production:
+```bash
+# Build frontend
+cd frontend
+npm run build
 
-### Backend (Your preferred hosting)
-1. Set up MongoDB Atlas
-2. Configure environment variables
-3. Deploy Node.js application
+# Start backend
+cd backend
+npm start
+```
 
-## API Documentation 📚
+## Deployment
 
-### Authentication Routes
+The application is deployed on Vercel:
+- Frontend: [https://cric-coach-app.vercel.app](https://cric-coach-app.vercel.app)
+- Backend: [https://cricket-coach-backend.vercel.app](https://cricket-coach-backend.vercel.app)
+
+## Contact
+
+Kathan Patel (N0166913)
+- Email: kathan.patel@humber.ca
+- GitHub: [https://github.com/kathanpatel29](https://github.com/kathanpatel29)
+
+Project Link: [https://github.com/kathanpatel29/Cricket-Coach-Booking-App](https://github.com/kathanpatel29/Cricket-Coach-Booking-App)
+
+## Acknowledgments
+
+- Professor Bernie Monette
+- Humber College - HTTP-5310-0NA
+- All contributors and testers
+
+## Testing
+
+```bash
+# Run backend tests
+cd backend
+npm test
+
+# Run frontend tests
+cd frontend
+npm test
+```
+
+## API Documentation
+
+### Authentication
 - POST /api/auth/register - Register new user
 - POST /api/auth/login - User login
-- POST /api/auth/logout - User logout
-- GET /api/auth/me - Get current user
+- GET /api/auth/profile - Get user profile
 
-### User Routes
-- GET /api/users/profile - Get user profile
-- PUT /api/users/profile - Update user profile
-- PUT /api/users/password - Change password
-- DELETE /api/users/profile - Delete account
-
-### Coach Routes
-- GET /api/coaches - Get all coaches
-- GET /api/coaches/:id - Get coach by ID
-- PUT /api/coaches/profile - Update coach profile
-- GET /api/coaches/availability - Get coach availability
-- PUT /api/coaches/availability - Update availability
-- POST /api/coaches/emergency-off - Set emergency time off
-
-### Booking Routes
+### Bookings
 - POST /api/bookings - Create booking
-- GET /api/bookings/client - Get client bookings
-- GET /api/bookings/coach - Get coach bookings
-- PATCH /api/bookings/:id/status - Update booking status
-- POST /api/bookings/:id/cancel - Cancel booking
+- GET /api/bookings - Get user bookings
+- GET /api/bookings/:id - Get booking details
+- PATCH /api/bookings/:id - Update booking status
 
-### Payment Routes
+### Coaches
+- GET /api/coaches - Get all coaches
+- GET /api/coaches/:id - Get coach details
+- POST /api/coaches - Create coach profile
+- PATCH /api/coaches/:id - Update coach profile
+
+### Payments
 - POST /api/payments/create-intent - Create payment intent
 - POST /api/payments/confirm - Confirm payment
-- GET /api/payments/history - Get payment history
-- POST /api/payments/:id/refund - Request refund
 
-### Admin Routes
-- GET /api/admin/dashboard - Get dashboard stats
-- GET /api/admin/users - Get all users
-- GET /api/admin/coaches/pending - Get pending coaches
-- POST /api/admin/coaches/:id/approve - Approve coach
-- GET /api/admin/reports/* - Generate reports
-
-## Security 🔒
-
-- JWT authentication
-- Password hashing with bcrypt
-- Input validation and sanitization
-- File upload restrictions
-- CORS configuration
-- Rate limiting
-- Error handling
-- Secure payment processing
-
-## Contributing 🤝
+## Contributing
 
 1. Fork the repository
-2. Create your feature branch: \`git checkout -b feature/YourFeature\`
-3. Commit your changes: \`git commit -m 'Add YourFeature'\`
-4. Push to the branch: \`git push origin feature/YourFeature\`
-5. Open a pull request
+2. Create your feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
 
-## License 📝
+## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Acknowledgments 🙏
-
-- Material-UI for the component library
-- Stripe for payment processing
-- MongoDB Atlas for database hosting
-- Vercel for frontend hosting 
+This project is licensed under the MIT License. 

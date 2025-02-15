@@ -48,3 +48,5 @@ jobs:
             ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           to: ${{ secrets.EMAIL_USER }}
           from: Cricket Coach App CI
+'@
+

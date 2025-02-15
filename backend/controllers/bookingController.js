@@ -4,6 +4,8 @@ const Booking = require("../models/Booking");
 const Coach = require("../models/Coach");
 const { AppError, catchAsync } = require("../utils/errorHandler");
 const { successResponse, errorResponse } = require("../utils/responseFormatter");
+const User = require('../models/user');
+const { sendBookingConfirmation, sendCoachNotification } = require('../utils/emailService');
 
 // @desc    Create a new booking
 // @route   POST /api/bookings
@@ -37,10 +39,25 @@ const createBooking = catchAsync(async (req, res) => {
     timeSlot,
     duration,
     totalAmount,
+    status: 'pending'
   });
 
   // Update coach's availability
   await coach.markTimeSlotAsBooked(date, timeSlot);
+
+  // Send email notifications
+  const user = await User.findById(req.user.id);
+  const bookingDetails = {
+    userName: user.name,
+    coachName: coach.name,
+    date,
+    timeSlot,
+    duration,
+    location: coach.location
+  };
+
+  await sendBookingConfirmation(user.email, bookingDetails);
+  await sendCoachNotification(coach.email, bookingDetails);
 
   successResponse(res, 201, booking, "Booking created successfully");
 });

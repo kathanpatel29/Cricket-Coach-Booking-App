@@ -7,6 +7,7 @@ import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 import App from './App'
 import './index.css'
+import './i18n' // Import i18n configuration
 
 // Create MUI theme
 const theme = createTheme({
