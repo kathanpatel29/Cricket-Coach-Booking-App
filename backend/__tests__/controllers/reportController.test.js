@@ -43,7 +43,7 @@ describe('Report Controller Tests', () => {
   });
 
   describe('Report Generation', () => {
-    it('generates all types of reports', async () => {
+    it.concurrent('generates all types of reports', async () => {
       // Booking reports
       const bookingResponse = await request(app)
         .get('/api/reports/bookings')
@@ -75,7 +75,7 @@ describe('Report Controller Tests', () => {
       expect(exportResponse.status).toBe(200);
     });
 
-    it('handles invalid report parameters', async () => {
+    it.concurrent('handles invalid report parameters', async () => {
       const response = await request(app)
         .get('/api/reports/bookings')
         .query({ 

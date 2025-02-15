@@ -22,7 +22,7 @@ describe('Essential Auth Tests', () => {
   };
 
   describe('Authentication Flow', () => {
-    it('complete auth flow', async () => {
+    it.concurrent('complete auth flow', async () => {
       // 1. Register
       const registerResponse = await request(app)
         .post('/api/auth/register')
@@ -44,7 +44,7 @@ describe('Essential Auth Tests', () => {
     });
 
     // Validation tests
-    it('prevents duplicate registration', async () => {
+    it.concurrent('prevents duplicate registration', async () => {
       // First registration
       await request(app)
         .post('/api/auth/register')
@@ -58,7 +58,7 @@ describe('Essential Auth Tests', () => {
       expect(response.status).toBe(400);
     });
 
-    it('handles invalid login', async () => {
+    it.concurrent('handles invalid login', async () => {
       const response = await request(app)
         .post('/api/auth/login')
         .send({

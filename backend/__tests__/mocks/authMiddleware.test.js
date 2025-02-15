@@ -14,7 +14,7 @@ describe('Auth Middleware', () => {
     nextFunction = jest.fn();
   });
 
-  it('should add user object to request with client role', () => {
+  it.concurrent('should add user object to request with client role', () => {
     const middleware = authorize('client');
     middleware(mockReq, mockRes, nextFunction);
 
@@ -25,7 +25,7 @@ describe('Auth Middleware', () => {
     expect(nextFunction).toHaveBeenCalled();
   });
 
-  it('should add user object to request with coach role', () => {
+  it.concurrent('should add user object to request with coach role', () => {
     const middleware = authorize('coach');
     middleware(mockReq, mockRes, nextFunction);
 
@@ -34,7 +34,7 @@ describe('Auth Middleware', () => {
     expect(nextFunction).toHaveBeenCalled();
   });
 
-  it('should add user object to request with admin role', () => {
+  it.concurrent('should add user object to request with admin role', () => {
     const middleware = authorize('admin');
     middleware(mockReq, mockRes, nextFunction);
 
@@ -43,7 +43,7 @@ describe('Auth Middleware', () => {
     expect(nextFunction).toHaveBeenCalled();
   });
 
-  it('should return 403 if role does not match', () => {
+  it.concurrent('should return 403 if role does not match', () => {
     const middleware = authorize('admin');
     mockReq.user = { role: 'client' };
     

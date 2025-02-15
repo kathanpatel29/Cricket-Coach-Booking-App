@@ -61,11 +61,11 @@ describe('Essential Booking Tests', () => {
 
   // Essential booking flow tests
   describe('Core Booking Functionality', () => {
-    it('complete booking flow', async () => {
+    it.concurrent('complete booking flow', async () => {
       // 1. Create booking
       const newBooking = {
         coachId: testCoach._id,
-        date: new Date().toISOString().split('T')[0],
+        date: new Date().toISOString().split.concurrent('T')[0],
         timeSlot: '14:00',
         duration: 1,
         totalAmount: 50,
@@ -105,7 +105,7 @@ describe('Essential Booking Tests', () => {
     });
 
     // Quick validation tests
-    it('handles invalid booking data', async () => {
+    it.concurrent('handles invalid booking data', async () => {
       const invalidData = { date: 'invalid' };
       const response = await request(app)
         .post('/api/bookings')
@@ -114,7 +114,7 @@ describe('Essential Booking Tests', () => {
       expect(response.status).toBe(400);
     });
 
-    it('handles non-existent booking', async () => {
+    it.concurrent('handles non-existent booking', async () => {
       const fakeId = new mongoose.Types.ObjectId();
       const response = await request(app)
         .get(`/api/bookings/${fakeId}`);
@@ -125,7 +125,7 @@ describe('Essential Booking Tests', () => {
 
   // Client bookings list
   describe('Client Bookings', () => {
-    it('lists client bookings', async () => {
+    it.concurrent('lists client bookings', async () => {
       const response = await request(app)
         .get('/api/bookings/client');
       

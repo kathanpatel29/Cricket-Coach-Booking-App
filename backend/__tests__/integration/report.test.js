@@ -73,7 +73,7 @@ describe('Reporting System Tests', () => {
   });
 
   describe('Booking Reports', () => {
-    it('generates booking summary report', async () => {
+    it.concurrent('generates booking summary report', async () => {
       const response = await request(app)
         .get('/api/reports/bookings')
         .query({
@@ -94,7 +94,7 @@ describe('Reporting System Tests', () => {
       });
     });
 
-    it('filters booking reports by date range', async () => {
+    it.concurrent('filters booking reports by date range', async () => {
       const futureDate = new Date();
       futureDate.setDate(futureDate.getDate() + 7);
 
@@ -111,7 +111,7 @@ describe('Reporting System Tests', () => {
   });
 
   describe('Revenue Reports', () => {
-    it('generates revenue summary report', async () => {
+    it.concurrent('generates revenue summary report', async () => {
       const response = await request(app)
         .get('/api/reports/revenue')
         .query({
@@ -129,7 +129,7 @@ describe('Reporting System Tests', () => {
       });
     });
 
-    it('calculates revenue trends', async () => {
+    it.concurrent('calculates revenue trends', async () => {
       const response = await request(app)
         .get('/api/reports/revenue/trends')
         .query({
@@ -144,7 +144,7 @@ describe('Reporting System Tests', () => {
   });
 
   describe('Coach Performance Reports', () => {
-    it('generates coach performance metrics', async () => {
+    it.concurrent('generates coach performance metrics', async () => {
       const response = await request(app)
         .get('/api/reports/coaches')
         .query({
@@ -163,7 +163,7 @@ describe('Reporting System Tests', () => {
       });
     });
 
-    it('ranks coaches by performance', async () => {
+    it.concurrent('ranks coaches by performance', async () => {
       const response = await request(app)
         .get('/api/reports/coaches/rankings')
         .query({
@@ -178,7 +178,7 @@ describe('Reporting System Tests', () => {
   });
 
   describe('Analytics Reports', () => {
-    it('generates platform analytics', async () => {
+    it.concurrent('generates platform analytics', async () => {
       const response = await request(app)
         .get('/api/reports/analytics')
         .query({
@@ -204,7 +204,7 @@ describe('Reporting System Tests', () => {
       });
     });
 
-    it('identifies peak booking times', async () => {
+    it.concurrent('identifies peak booking times', async () => {
       const response = await request(app)
         .get('/api/reports/analytics/peak-times');
 
@@ -216,7 +216,7 @@ describe('Reporting System Tests', () => {
   });
 
   describe('Report Export', () => {
-    it('exports reports in various formats', async () => {
+    it.concurrent('exports reports in various formats', async () => {
       const formats = ['csv', 'pdf', 'excel'];
 
       for (const format of formats) {
@@ -235,7 +235,7 @@ describe('Reporting System Tests', () => {
       }
     });
 
-    it('handles custom report parameters', async () => {
+    it.concurrent('handles custom report parameters', async () => {
       const response = await request(app)
         .post('/api/reports/export')
         .send({
@@ -253,7 +253,7 @@ describe('Reporting System Tests', () => {
   });
 
   describe('Report Access Control', () => {
-    it('restricts access to authorized users', async () => {
+    it.concurrent('restricts access to authorized users', async () => {
       // Change auth middleware to non-admin user
       app.use((req, res, next) => {
         req.user = { id: '123456789', role: 'client', email: 'client@example.com' };
@@ -267,7 +267,7 @@ describe('Reporting System Tests', () => {
       expect(response.body.message).toContain('unauthorized');
     });
 
-    it('limits report data based on user role', async () => {
+    it.concurrent('limits report data based on user role', async () => {
       // Change auth middleware to coach user
       app.use((req, res, next) => {
         req.user = { id: testCoach._id, role: 'coach', email: 'coach@example.com' };

@@ -31,7 +31,7 @@ describe('Review Controller Tests', () => {
   });
 
   describe('Review Management', () => {
-    it('handles complete review flow', async () => {
+    it.concurrent('handles complete review flow', async () => {
       // Create review
       const reviewData = {
         coachId: testCoach._id,
@@ -67,7 +67,7 @@ describe('Review Controller Tests', () => {
       expect(deleteResponse.status).toBe(200);
     });
 
-    it('handles invalid review data', async () => {
+    it.concurrent('handles invalid review data', async () => {
       const invalidData = { rating: 6 }; // Invalid rating > 5
       const response = await request(app)
         .post('/api/reviews')

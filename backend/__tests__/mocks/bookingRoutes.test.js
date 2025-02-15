@@ -8,7 +8,7 @@ app.use('/api/bookings', router);
 
 describe('Booking Routes', () => {
   describe('GET /api/bookings/client', () => {
-    it('should return empty bookings array', async () => {
+    it.concurrent('should return empty bookings array', async () => {
       const response = await request(app)
         .get('/api/bookings/client');
       
@@ -18,7 +18,7 @@ describe('Booking Routes', () => {
   });
 
   describe('POST /api/bookings', () => {
-    it('should create a booking', async () => {
+    it.concurrent('should create a booking', async () => {
       const bookingData = {
         coachId: 'test-coach-id',
         date: '2024-03-15',
@@ -37,7 +37,7 @@ describe('Booking Routes', () => {
   });
 
   describe('GET /api/bookings/:id', () => {
-    it('should get booking by id', async () => {
+    it.concurrent('should get booking by id', async () => {
       const bookingId = 'test-booking-id';
       const response = await request(app)
         .get(`/api/bookings/${bookingId}`);
@@ -49,7 +49,7 @@ describe('Booking Routes', () => {
   });
 
   describe('PATCH /api/bookings/reschedule/:id', () => {
-    it('should reschedule a booking', async () => {
+    it.concurrent('should reschedule a booking', async () => {
       const bookingId = 'test-booking-id';
       const updateData = {
         newDate: '2024-03-16',
@@ -67,7 +67,7 @@ describe('Booking Routes', () => {
   });
 
   describe('PATCH /api/bookings/cancel/:id', () => {
-    it('should cancel a booking', async () => {
+    it.concurrent('should cancel a booking', async () => {
       const bookingId = 'test-booking-id';
       
       const response = await request(app)

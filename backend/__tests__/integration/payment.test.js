@@ -43,7 +43,7 @@ describe('Payment Integration Tests', () => {
   });
 
   describe('Payment Processing', () => {
-    it('creates and confirms payment intent', async () => {
+    it.concurrent('creates and confirms payment intent', async () => {
       // Create payment intent
       const createResponse = await request(app)
         .post('/api/payments/create-intent')
@@ -80,7 +80,7 @@ describe('Payment Integration Tests', () => {
       expect(updatedBooking.status).toBe('confirmed');
     });
 
-    it('handles failed payments', async () => {
+    it.concurrent('handles failed payments', async () => {
       // Create payment intent with failing card
       const createResponse = await request(app)
         .post('/api/payments/create-intent')
@@ -116,7 +116,7 @@ describe('Payment Integration Tests', () => {
   });
 
   describe('Coach Earnings', () => {
-    it('calculates coach earnings correctly', async () => {
+    it.concurrent('calculates coach earnings correctly', async () => {
       // Create multiple completed bookings
       await Booking.create([
         {
@@ -160,7 +160,7 @@ describe('Payment Integration Tests', () => {
   });
 
   describe('Refund Processing', () => {
-    it('processes refunds for cancelled bookings', async () => {
+    it.concurrent('processes refunds for cancelled bookings', async () => {
       // Create a completed booking
       const booking = await Booking.create({
         client: '123456789',

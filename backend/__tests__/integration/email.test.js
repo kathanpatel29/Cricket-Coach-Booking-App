@@ -49,7 +49,7 @@ describe('Email Notification Tests', () => {
   });
 
   describe('Booking Notifications', () => {
-    it('sends booking confirmation email to client and coach', async () => {
+    it.concurrent('sends booking confirmation email to client and coach', async () => {
       await emailService.sendBookingConfirmation(testBooking._id);
 
       expect(mockSendMail).toHaveBeenCalledTimes(2); // One for client, one for coach
@@ -69,7 +69,7 @@ describe('Email Notification Tests', () => {
       });
     });
 
-    it('sends booking cancellation emails', async () => {
+    it.concurrent('sends booking cancellation emails', async () => {
       await emailService.sendBookingCancellation(testBooking._id);
 
       expect(mockSendMail).toHaveBeenCalledTimes(2);
@@ -89,7 +89,7 @@ describe('Email Notification Tests', () => {
       });
     });
 
-    it('sends booking reminder emails', async () => {
+    it.concurrent('sends booking reminder emails', async () => {
       await emailService.sendBookingReminder(testBooking._id);
 
       expect(mockSendMail).toHaveBeenCalledTimes(2);
@@ -111,7 +111,7 @@ describe('Email Notification Tests', () => {
   });
 
   describe('Account Notifications', () => {
-    it('sends welcome email on registration', async () => {
+    it.concurrent('sends welcome email on registration', async () => {
       const newUser = await createTestUser(User);
       await emailService.sendWelcomeEmail(newUser.user._id);
 
@@ -123,7 +123,7 @@ describe('Email Notification Tests', () => {
       });
     });
 
-    it('sends coach approval notification', async () => {
+    it.concurrent('sends coach approval notification', async () => {
       await emailService.sendCoachApprovalNotification(testCoach._id);
 
       expect(mockSendMail).toHaveBeenCalledTimes(1);
@@ -134,7 +134,7 @@ describe('Email Notification Tests', () => {
       });
     });
 
-    it('sends password reset email', async () => {
+    it.concurrent('sends password reset email', async () => {
       const resetToken = 'test-reset-token';
       await emailService.sendPasswordResetEmail(testClient.email, resetToken);
 
@@ -148,7 +148,7 @@ describe('Email Notification Tests', () => {
   });
 
   describe('Error Handling', () => {
-    it('handles email sending failures gracefully', async () => {
+    it.concurrent('handles email sending failures gracefully', async () => {
       mockSendMail.mockRejectedValueOnce(new Error('SMTP error'));
 
       await expect(emailService.sendWelcomeEmail(testClient._id))
@@ -156,7 +156,7 @@ describe('Email Notification Tests', () => {
         .toThrow('Failed to send welcome email');
     });
 
-    it('handles invalid email addresses', async () => {
+    it.concurrent('handles invalid email addresses', async () => {
       const invalidUser = await User.create({
         name: 'Invalid',
         email: 'invalid-email',
@@ -170,7 +170,7 @@ describe('Email Notification Tests', () => {
   });
 
   describe('Email Templates', () => {
-    it('generates correct booking confirmation template', async () => {
+    it.concurrent('generates correct booking confirmation template', async () => {
       const template = await emailService.generateBookingTemplate(testBooking._id, 'confirmation');
       
       expect(template).toContain(testCoach.name);
@@ -178,7 +178,7 @@ describe('Email Notification Tests', () => {
       expect(template).toContain(testBooking.date.toLocaleDateString());
     });
 
-    it('generates correct reminder template', async () => {
+    it.concurrent('generates correct reminder template', async () => {
       const template = await emailService.generateBookingTemplate(testBooking._id, 'reminder');
       
       expect(template).toContain('upcoming');

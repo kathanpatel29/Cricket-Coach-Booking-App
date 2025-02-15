@@ -34,7 +34,7 @@ describe('Coach Availability and Booking Validation Tests', () => {
   });
 
   describe('Availability Management', () => {
-    it('sets coach availability successfully', async () => {
+    it.concurrent('sets coach availability successfully', async () => {
       const availabilityData = {
         coachId: testCoach._id,
         weeklySchedule: {
@@ -61,7 +61,7 @@ describe('Coach Availability and Booking Validation Tests', () => {
       expect(response.body.data.exceptions).toHaveLength(1);
     });
 
-    it('validates time slot format', async () => {
+    it.concurrent('validates time slot format', async () => {
       const invalidData = {
         coachId: testCoach._id,
         weeklySchedule: {
@@ -77,7 +77,7 @@ describe('Coach Availability and Booking Validation Tests', () => {
       expect(response.body.message).toContain('Invalid time format');
     });
 
-    it('prevents overlapping time slots', async () => {
+    it.concurrent('prevents overlapping time slots', async () => {
       const overlappingData = {
         coachId: testCoach._id,
         weeklySchedule: {
@@ -108,7 +108,7 @@ describe('Coach Availability and Booking Validation Tests', () => {
       });
     });
 
-    it('retrieves coach availability correctly', async () => {
+    it.concurrent('retrieves coach availability correctly', async () => {
       const response = await request(app)
         .get(`/api/availability/${testCoach._id}`);
 
@@ -120,7 +120,7 @@ describe('Coach Availability and Booking Validation Tests', () => {
       });
     });
 
-    it('returns available time slots for a specific date', async () => {
+    it.concurrent('returns available time slots for a specific date', async () => {
       const date = new Date();
       date.setDate(date.getDate() + (8 - date.getDay()) % 7); // Next Monday
 
@@ -158,7 +158,7 @@ describe('Coach Availability and Booking Validation Tests', () => {
       });
     });
 
-    it('validates available time slot successfully', async () => {
+    it.concurrent('validates available time slot successfully', async () => {
       const nextMonday = new Date();
       nextMonday.setDate(nextMonday.getDate() + (8 - nextMonday.getDay()) % 7);
 
@@ -175,7 +175,7 @@ describe('Coach Availability and Booking Validation Tests', () => {
       expect(response.body.data.available).toBe(true);
     });
 
-    it('detects booking conflicts', async () => {
+    it.concurrent('detects booking conflicts', async () => {
       const nextMonday = new Date();
       nextMonday.setDate(nextMonday.getDate() + (8 - nextMonday.getDay()) % 7);
 
@@ -193,7 +193,7 @@ describe('Coach Availability and Booking Validation Tests', () => {
       expect(response.body.data.reason).toContain('already booked');
     });
 
-    it('handles coach unavailability', async () => {
+    it.concurrent('handles coach unavailability', async () => {
       const nextTuesday = new Date();
       nextTuesday.setDate(nextTuesday.getDate() + (9 - nextTuesday.getDay()) % 7);
 
@@ -211,7 +211,7 @@ describe('Coach Availability and Booking Validation Tests', () => {
       expect(response.body.data.reason).toContain('not available');
     });
 
-    it('validates booking duration constraints', async () => {
+    it.concurrent('validates booking duration constraints', async () => {
       const nextMonday = new Date();
       nextMonday.setDate(nextMonday.getDate() + (8 - nextMonday.getDay()) % 7);
 
@@ -231,7 +231,7 @@ describe('Coach Availability and Booking Validation Tests', () => {
   });
 
   describe('Exception Handling', () => {
-    it('handles coach holiday exceptions', async () => {
+    it.concurrent('handles coach holiday exceptions', async () => {
       // Set availability with holiday exception
       const nextMonday = new Date();
       nextMonday.setDate(nextMonday.getDate() + (8 - nextMonday.getDay()) % 7);
@@ -262,7 +262,7 @@ describe('Coach Availability and Booking Validation Tests', () => {
       expect(response.body.data.reason).toContain('Holiday');
     });
 
-    it('handles special availability exceptions', async () => {
+    it.concurrent('handles special availability exceptions', async () => {
       // Set availability with special hours
       const nextMonday = new Date();
       nextMonday.setDate(nextMonday.getDate() + (8 - nextMonday.getDay()) % 7);

@@ -29,7 +29,7 @@ describe('Admin Controller Tests', () => {
   });
 
   describe('Admin Core Functions', () => {
-    it('manages users and coaches', async () => {
+    it.concurrent('manages users and coaches', async () => {
       // Get all users
       const usersResponse = await request(app)
         .get('/api/admin/users');

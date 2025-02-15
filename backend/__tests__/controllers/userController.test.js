@@ -27,7 +27,7 @@ describe('User Controller Tests', () => {
   });
 
   describe('User Profile Management', () => {
-    it('handles complete user profile flow', async () => {
+    it.concurrent('handles complete user profile flow', async () => {
       // Get user profile
       const profileResponse = await request(app)
         .get('/api/users/profile');
@@ -56,7 +56,7 @@ describe('User Controller Tests', () => {
       expect(passwordResponse.status).toBe(200);
     });
 
-    it('handles invalid profile updates', async () => {
+    it.concurrent('handles invalid profile updates', async () => {
       const invalidData = { email: 'invalid-email' };
       const response = await request(app)
         .patch('/api/users/profile')
@@ -64,7 +64,7 @@ describe('User Controller Tests', () => {
       expect(response.status).toBe(400);
     });
 
-    it('handles invalid password updates', async () => {
+    it.concurrent('handles invalid password updates', async () => {
       const invalidData = {
         currentPassword: 'wrongpass',
         newPassword: 'newpass'

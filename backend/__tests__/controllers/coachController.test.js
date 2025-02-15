@@ -31,7 +31,7 @@ describe('Coach Controller Tests', () => {
   });
 
   describe('Coach Profile Management', () => {
-    it('handles complete coach profile flow', async () => {
+    it.concurrent('handles complete coach profile flow', async () => {
       // Get all coaches
       const listResponse = await request(app)
         .get('/api/coaches');
@@ -60,7 +60,7 @@ describe('Coach Controller Tests', () => {
       const availabilityData = {
         slots: [
           {
-            date: new Date().toISOString().split('T')[0],
+            date: new Date().toISOString().split.concurrent('T')[0],
             times: ['09:00', '10:00', '11:00']
           }
         ]
@@ -72,7 +72,7 @@ describe('Coach Controller Tests', () => {
       expect(availResponse.body.data.availability).toBeDefined();
     });
 
-    it('handles invalid coach data', async () => {
+    it.concurrent('handles invalid coach data', async () => {
       const invalidData = { hourlyRate: 'invalid' };
       const response = await request(app)
         .patch(`/api/coaches/${testCoach._id}`)

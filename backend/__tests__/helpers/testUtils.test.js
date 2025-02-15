@@ -7,7 +7,7 @@ describe('Test Utilities', () => {
   setupTestDB();
 
   describe('createTestUser', () => {
-    it('should create a user with default values', async () => {
+    it.concurrent('should create a user with default values', async () => {
       const user = await createTestUser(User);
       expect(user).toBeDefined();
       expect(user.name).toBe('Test User');
@@ -15,7 +15,7 @@ describe('Test Utilities', () => {
       expect(user.role).toBe('client');
     });
 
-    it('should create a user with custom values', async () => {
+    it.concurrent('should create a user with custom values', async () => {
       const customData = {
         name: 'Custom User',
         email: 'custom@example.com',
@@ -29,7 +29,7 @@ describe('Test Utilities', () => {
   });
 
   describe('createTestCoach', () => {
-    it('should create a coach with default values', async () => {
+    it.concurrent('should create a coach with default values', async () => {
       const { user, coach } = await createTestCoach(User, Coach);
       expect(user).toBeDefined();
       expect(coach).toBeDefined();
@@ -39,7 +39,7 @@ describe('Test Utilities', () => {
       expect(coach.hourlyRate).toBe(50);
     });
 
-    it('should create a coach with custom values', async () => {
+    it.concurrent('should create a coach with custom values', async () => {
       const customData = {
         user: {
           name: 'Custom Coach',
