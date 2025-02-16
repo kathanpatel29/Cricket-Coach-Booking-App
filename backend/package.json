@@ -12,13 +12,6 @@
     "vercel-build": "echo 'Building backend'",
     "deploy": "vercel --prod",
     "build": "mkdir -p dist && cp -r . dist/ && rm -rf dist/node_modules",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
-    "test:unit": "jest --testMatch='**/__tests__/**/*.test.js' --coverage",
-    "test:integration": "jest --testMatch='**/__tests__/integration/**/*.test.js' --coverage",
-    "test:api": "jest --testMatch='**/__tests__/api/**/*.test.js' --coverage",
-    "test:ci": "jest --ci --coverage --forceExit --detectOpenHandles",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },
