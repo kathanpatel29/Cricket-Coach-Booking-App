@@ -18,24 +18,28 @@ import {
   MenuItem,
   CircularProgress,
   Alert,
-  Chip
+  Chip,
+  IconButton,
+  InputAdornment,
+  TablePagination
 } from '@mui/material';
+import {
+  Search as SearchIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon
+} from '@mui/icons-material';
 import { adminService } from '../../../services/api';
+import { format } from 'date-fns';
 
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [editDialog, setEditDialog] = useState({
-    open: false,
-    user: null
-  });
-  const [editForm, setEditForm] = useState({
-    name: '',
-    email: '',
-    role: '',
-    isActive: true
-  });
+  const [searchQuery, setSearchQuery] = useState('');
+  const [editDialog, setEditDialog] = useState({ open: false, user: null });
+  const [deleteDialog, setDeleteDialog] = useState({ open: false, user: null });
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   useEffect(() => {
     fetchUsers();
@@ -43,71 +47,101 @@ const UserManagement = () => {
 
   const fetchUsers = async () => {
     try {
-      const response = await adminService.getUsers();
-      // Ensure we have a valid response and data structure
-      if (response?.data?.data?.users) {
-        setUsers(response.data.data.users);
-      } else {
-        setUsers([]);
-        setError('No users data available');
+      setLoading(true);
+      setError('');
+      const response = await adminService.getAllUsers();
+      if (response?.data?.data) {
+        setUsers(response.data.data.users || []);
       }
-    } catch (error) {
-      console.error('Error fetching users:', error);
-      setError(error.response?.data?.message || 'Error fetching users');
-      setUsers([]); // Set empty array on error
+    } catch (err) {
+      console.error('Error fetching users:', err);
+      setError(err.response?.data?.message || 'Error fetching users');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleEditClick = (user) => {
-    setEditForm({
-      name: user.name || '',
-      email: user.email || '',
-      role: user.role || '',
-      isActive: user.isActive ?? true
-    });
-    setEditDialog({ open: true, user });
-  };
-
-  const handleEditSubmit = async () => {
+  const handleSearch = async () => {
     try {
-      await adminService.updateUser(editDialog.user._id, editForm);
-      await fetchUsers(); // Refresh the list
-      setEditDialog({ open: false, user: null });
-    } catch (error) {
-      console.error('Error updating user:', error);
-      setError(error.response?.data?.message || 'Error updating user');
+      setLoading(true);
+      setError('');
+      
+      let response;
+      if (searchQuery.trim()) {
+        response = await adminService.searchUsers(searchQuery.trim());
+      } else {
+        response = await adminService.getAllUsers();
+      }
+
+      if (response?.data?.data) {
+        setUsers(response.data.data.users || []);
+      } else {
+        setUsers([]);
+      }
+    } catch (err) {
+      console.error('Search error:', err);
+      setError(err.response?.data?.message || 'Error searching users');
+      setUsers([]);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleDeleteUser = async (userId) => {
-    if (!window.confirm('Are you sure you want to delete this user?')) return;
-    
+  const handleUpdateUser = async (userId, data) => {
     try {
-      await adminService.deleteUser(userId);
-      await fetchUsers(); // Refresh the list
-    } catch (error) {
-      console.error('Error deleting user:', error);
-      setError(error.response?.data?.message || 'Error deleting user');
+      await adminService.updateUser(userId, data);
+      fetchUsers();
+      setEditDialog({ open: false, user: null });
+    } catch (err) {
+      setError(err.response?.data?.message || 'Error updating user');
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!deleteDialog.user) return;
+
+    try {
+      await adminService.deleteUser(deleteDialog.user._id);
+      fetchUsers();
+      setDeleteDialog({ open: false, user: null });
+    } catch (err) {
+      setError(err.response?.data?.message || 'Error deleting user');
     }
   };
 
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+      <Box display="flex" justifyContent="center" p={3}>
         <CircularProgress />
       </Box>
     );
   }
 
   return (
-    <Box>
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-
+    <Box sx={{ p: 3 }}>
       <Typography variant="h6" gutterBottom>
         User Management
       </Typography>
+
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+
+      <Box sx={{ mb: 3 }}>
+        <TextField
+          placeholder="Search users..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+          InputProps={{
+            endAdornment: (
+              <InputAdornment position="end">
+                <IconButton onClick={handleSearch}>
+                  <SearchIcon />
+                </IconButton>
+              </InputAdornment>
+            ),
+          }}
+        />
+      </Box>
 
       <TableContainer component={Paper}>
         <Table>
@@ -117,63 +151,66 @@ const UserManagement = () => {
               <TableCell>Email</TableCell>
               <TableCell>Role</TableCell>
               <TableCell>Status</TableCell>
+              <TableCell>Joined</TableCell>
               <TableCell>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {users && users.length > 0 ? (
-              users.map((user) => (
+            {users
+              .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+              .map((user) => (
                 <TableRow key={user._id}>
-                  <TableCell>{user.name || 'N/A'}</TableCell>
-                  <TableCell>{user.email || 'N/A'}</TableCell>
+                  <TableCell>{user.name}</TableCell>
+                  <TableCell>{user.email}</TableCell>
                   <TableCell>
                     <Chip 
-                      label={user.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : 'N/A'}
-                      color={
-                        user.role === 'admin' 
-                          ? 'error' 
-                          : user.role === 'coach' 
-                            ? 'primary' 
-                            : 'default'
-                      }
+                      label={user.role}
+                      color={user.role === 'admin' ? 'error' : user.role === 'coach' ? 'primary' : 'default'}
                       size="small"
                     />
                   </TableCell>
                   <TableCell>
-                    <Chip
+                    <Chip 
                       label={user.isActive ? 'Active' : 'Inactive'}
-                      color={user.isActive ? 'success' : 'default'}
+                      color={user.isActive ? 'success' : 'error'}
                       size="small"
                     />
                   </TableCell>
                   <TableCell>
-                    <Button
+                    {format(new Date(user.createdAt), 'MMM dd, yyyy')}
+                  </TableCell>
+                  <TableCell>
+                    <IconButton
                       size="small"
-                      onClick={() => handleEditClick(user)}
-                      sx={{ mr: 1 }}
+                      onClick={() => setEditDialog({ open: true, user })}
                     >
-                      Edit
-                    </Button>
-                    <Button
+                      <EditIcon />
+                    </IconButton>
+                    <IconButton
                       size="small"
                       color="error"
-                      onClick={() => handleDeleteUser(user._id)}
+                      onClick={() => setDeleteDialog({ open: true, user })}
                     >
-                      Delete
-                    </Button>
+                      <DeleteIcon />
+                    </IconButton>
                   </TableCell>
                 </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={5} align="center">
-                  No users found
-                </TableCell>
-              </TableRow>
-            )}
+              ))}
           </TableBody>
         </Table>
       </TableContainer>
+
+      <TablePagination
+        component="div"
+        count={users.length}
+        page={page}
+        onPageChange={(event, newPage) => setPage(newPage)}
+        rowsPerPage={rowsPerPage}
+        onRowsPerPageChange={(event) => {
+          setRowsPerPage(parseInt(event.target.value, 10));
+          setPage(0);
+        }}
+      />
 
       {/* Edit User Dialog */}
       <Dialog
@@ -185,23 +222,23 @@ const UserManagement = () => {
           <TextField
             fullWidth
             label="Name"
-            value={editForm.name}
-            onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+            value={editDialog.user?.name || ''}
+            onChange={(e) => setEditDialog({ ...editDialog, user: { ...editDialog.user, name: e.target.value } })}
             margin="normal"
           />
           <TextField
             fullWidth
             label="Email"
-            value={editForm.email}
-            onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+            value={editDialog.user?.email || ''}
+            onChange={(e) => setEditDialog({ ...editDialog, user: { ...editDialog.user, email: e.target.value } })}
             margin="normal"
           />
           <TextField
             select
             fullWidth
             label="Role"
-            value={editForm.role}
-            onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
+            value={editDialog.user?.role || ''}
+            onChange={(e) => setEditDialog({ ...editDialog, user: { ...editDialog.user, role: e.target.value } })}
             margin="normal"
           >
             <MenuItem value="client">Client</MenuItem>
@@ -212,20 +249,41 @@ const UserManagement = () => {
             select
             fullWidth
             label="Status"
-            value={editForm.isActive}
-            onChange={(e) => setEditForm({ ...editForm, isActive: e.target.value })}
+            value={editDialog.user?.isActive ? 'Active' : 'Inactive'}
+            onChange={(e) => setEditDialog({ ...editDialog, user: { ...editDialog.user, isActive: e.target.value === 'Active' } })}
             margin="normal"
           >
-            <MenuItem value={true}>Active</MenuItem>
-            <MenuItem value={false}>Inactive</MenuItem>
+            <MenuItem value="Active">Active</MenuItem>
+            <MenuItem value="Inactive">Inactive</MenuItem>
           </TextField>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setEditDialog({ open: false, user: null })}>
             Cancel
           </Button>
-          <Button onClick={handleEditSubmit} variant="contained" color="primary">
+          <Button onClick={() => handleUpdateUser(editDialog.user._id, editDialog.user)} variant="contained" color="primary">
             Save Changes
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete User Dialog */}
+      <Dialog
+        open={deleteDialog.open}
+        onClose={() => setDeleteDialog({ open: false, user: null })}
+      >
+        <DialogTitle>Delete User</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete {deleteDialog.user?.name}? This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialog({ open: false, user: null })}>
+            Cancel
+          </Button>
+          <Button onClick={handleDeleteUser} color="error" variant="contained">
+            Delete
           </Button>
         </DialogActions>
       </Dialog>

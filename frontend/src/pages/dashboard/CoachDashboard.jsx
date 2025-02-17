@@ -19,6 +19,7 @@ import {
 import { coachService } from '../../services/api';
 import SessionManagement from '../../components/features/coaches/SessionManagement';
 import Availability from '../../pages/bookings/Availability';
+import Analytics from '../../components/features/coaches/Analytics';
 
 const CoachDashboard = () => {
   const [activeTab, setActiveTab] = useState(0);
@@ -93,12 +94,7 @@ const CoachDashboard = () => {
       case 2:
         return <Availability />;
       case 3:
-        return (
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>Performance Analytics</Typography>
-            {/* Add performance analytics charts and metrics here */}
-          </Paper>
-        );
+        return <Analytics />;
       default:
         return null;
     }

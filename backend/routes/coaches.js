@@ -23,6 +23,10 @@ router.put('/profile', coachController.updateProfile);
 router.get('/schedule', coachController.getSchedule);
 router.put('/schedule', coachController.updateSchedule);
 
+// Availability
+router.get('/availability', coachController.getAvailability);
+router.put('/availability', coachController.updateAvailability);
+
 // Emergency off
 router.get('/emergency-off', coachController.getEmergencyOff);
 router.post('/emergency-off', coachController.setEmergencyOff);

@@ -8,11 +8,33 @@ const { formatResponse } = require('../utils/responseFormatter');
 const { AppError, catchAsync } = require('../utils/errorHandler');
 
 // User Management
-exports.getAllUsers = catchAsync(async (req, res) => {
-  const users = await User.find().select('-password');
-  const response = formatResponse('success', 'Users retrieved successfully', { users });
-  res.status(200).json(response);
-});
+exports.getAllUsers = async (req, res) => {
+  try {
+    const { search } = req.query;
+    let query = {};
+
+    // If search parameter exists, create search query
+    if (search) {
+      query = {
+        $or: [
+          { name: { $regex: search, $options: 'i' } },
+          { email: { $regex: search, $options: 'i' } }
+        ]
+      };
+    }
+
+    const users = await User.find(query)
+      .select('-password')
+      .sort('-createdAt');
+
+    res.json(formatResponse('success', 'Users retrieved successfully', {
+      users
+    }));
+  } catch (error) {
+    console.error('Get users error:', error);
+    res.status(500).json(formatResponse('error', 'Error fetching users'));
+  }
+};
 
 exports.getUserById = catchAsync(async (req, res) => {
   const user = await User.findById(req.params.id).select('-password');
@@ -75,35 +97,41 @@ exports.deleteUser = catchAsync(async (req, res) => {
 // Coach Management
 exports.getPendingCoaches = async (req, res) => {
   try {
-    const pendingCoaches = await Coach.find({
-      approvalStatus: 'pending'
-    }).populate('user', 'name email profileImage');
+    const coaches = await Coach.find({ 
+      isApproved: false, 
+      status: 'pending' 
+    }).populate('user', 'name email');
 
-    res.json(formatResponse('success', 'Pending coaches retrieved successfully', pendingCoaches));
+    res.json(formatResponse('success', 'Pending coaches retrieved successfully', {
+      coaches
+    }));
   } catch (error) {
+    console.error('Get pending coaches error:', error);
     res.status(500).json(formatResponse('error', 'Error fetching pending coaches'));
   }
 };
 
 exports.approveCoach = async (req, res) => {
   try {
-    const coach = await Coach.findByIdAndUpdate(
-      req.params.id,
-      {
-        approvalStatus: 'approved',
-        isApproved: true,
-        approvalDate: Date.now(),
-        approvedBy: req.user._id
-      },
-      { new: true }
-    ).populate('user', 'name email profileImage');
-
+    const coach = await Coach.findById(req.params.id);
     if (!coach) {
       return res.status(404).json(formatResponse('error', 'Coach not found'));
     }
 
-    res.json(formatResponse('success', 'Coach approved successfully', coach));
+    coach.isApproved = true;
+    coach.status = 'approved';
+    coach.approvedAt = new Date();
+    coach.approvedBy = req.user._id;
+    await coach.save();
+
+    // Update user role to coach if not already
+    await User.findByIdAndUpdate(coach.user, {
+      role: 'coach'
+    });
+
+    res.json(formatResponse('success', 'Coach approved successfully'));
   } catch (error) {
+    console.error('Approve coach error:', error);
     res.status(500).json(formatResponse('error', 'Error approving coach'));
   }
 };
@@ -111,23 +139,22 @@ exports.approveCoach = async (req, res) => {
 exports.rejectCoach = async (req, res) => {
   try {
     const { reason } = req.body;
-    const coach = await User.findById(req.params.id);
+    if (!reason) {
+      return res.status(400).json(formatResponse('error', 'Rejection reason is required'));
+    }
 
+    const coach = await Coach.findById(req.params.id);
     if (!coach) {
       return res.status(404).json(formatResponse('error', 'Coach not found'));
     }
 
-    if (coach.role !== 'coach') {
-      return res.status(400).json(formatResponse('error', 'User is not a coach'));
-    }
-
-    coach.approvalStatus = 'rejected';
-    coach.isApproved = false;
+    coach.status = 'rejected';
     coach.rejectionReason = reason;
     await coach.save();
 
-    res.status(200).json(formatResponse('success', 'Coach rejected successfully', coach));
+    res.json(formatResponse('success', 'Coach application rejected'));
   } catch (error) {
+    console.error('Reject coach error:', error);
     res.status(500).json(formatResponse('error', 'Error rejecting coach'));
   }
 };

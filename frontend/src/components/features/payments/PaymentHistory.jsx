@@ -17,9 +17,11 @@ import {
   TextField,
   Alert,
   CircularProgress,
-  Chip
+  Chip,
+  TablePagination
 } from '../../shared/MuiComponents';
 import { paymentService } from '../../../services/api';
+import { format } from 'date-fns';
 
 const PaymentHistory = () => {
   const [payments, setPayments] = useState([]);
@@ -31,13 +33,16 @@ const PaymentHistory = () => {
   });
   const [refundReason, setRefundReason] = useState('');
   const [processing, setProcessing] = useState(false);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   useEffect(() => {
-    fetchPaymentHistory();
+    fetchPayments();
   }, []);
 
-  const fetchPaymentHistory = async () => {
+  const fetchPayments = async () => {
     try {
+      setLoading(true);
       const response = await paymentService.getPaymentHistory();
       if (response?.data?.data?.payments) {
         setPayments(response.data.data.payments);
@@ -117,35 +122,49 @@ const PaymentHistory = () => {
           <TableHead>
             <TableRow>
               <TableCell>Date</TableCell>
-              <TableCell>Description</TableCell>
-              <TableCell align="right">Amount</TableCell>
+              <TableCell>Booking ID</TableCell>
+              <TableCell>Coach</TableCell>
+              <TableCell>Amount</TableCell>
               <TableCell>Status</TableCell>
+              <TableCell>Payment Method</TableCell>
               <TableCell>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {payments.map((payment) => (
-              <TableRow key={payment._id}>
-                <TableCell>
-                  {new Date(payment.createdAt).toLocaleDateString()}
-                </TableCell>
-                <TableCell>{getPaymentDescription(payment)}</TableCell>
-                <TableCell align="right">${payment.amount.toFixed(2)}</TableCell>
-                <TableCell>{getStatusChip(payment.status)}</TableCell>
-                <TableCell>
-                  {payment.status === 'succeeded' && (
-                    <Button
+            {payments
+              .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+              .map((payment) => (
+                <TableRow key={payment._id}>
+                  <TableCell>
+                    {format(new Date(payment.createdAt), 'MMM dd, yyyy')}
+                  </TableCell>
+                  <TableCell>{payment.booking._id}</TableCell>
+                  <TableCell>
+                    {payment.booking.coach.name}
+                  </TableCell>
+                  <TableCell>${payment.amount.toFixed(2)}</TableCell>
+                  <TableCell>
+                    <Chip 
+                      label={payment.status} 
+                      color={getStatusChip(payment.status).props.color}
                       size="small"
-                      variant="outlined"
-                      color="primary"
-                      onClick={() => setRefundDialog({ open: true, payment })}
-                    >
-                      Request Refund
-                    </Button>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
+                    />
+                  </TableCell>
+                  <TableCell>{payment.paymentMethod}</TableCell>
+                  <TableCell>
+                    {payment.status === 'succeeded' && (
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="primary"
+                        onClick={() => setRefundDialog({ open: true, payment })}
+                      >
+                        Request Refund
+                      </Button>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
             {payments.length === 0 && (
               <TableRow>
                 <TableCell colSpan={5} align="center">
@@ -156,6 +175,18 @@ const PaymentHistory = () => {
           </TableBody>
         </Table>
       </TableContainer>
+
+      <TablePagination
+        component="div"
+        count={payments.length}
+        page={page}
+        onPageChange={(event, newPage) => setPage(newPage)}
+        rowsPerPage={rowsPerPage}
+        onRowsPerPageChange={(event) => {
+          setRowsPerPage(parseInt(event.target.value, 10));
+          setPage(0);
+        }}
+      />
 
       {/* Refund Request Dialog */}
       <Dialog

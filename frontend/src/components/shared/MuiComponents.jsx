@@ -1,3 +1,8 @@
+import DashboardIcon from '@mui/icons-material/Dashboard';
+import EventIcon from '@mui/icons-material/Event';
+import HistoryIcon from '@mui/icons-material/History';
+import FeedbackIcon from '@mui/icons-material/Feedback';
+
 // Material UI Components
 export {
   Box,
@@ -36,20 +41,19 @@ export {
   TableContainer,
   TableHead,
   TableRow,
+  TablePagination,
   List,
   ListItem,
   ListItemText,
   Fade
 } from '@mui/material';
 
-// Material UI Icons
+// Material UI Icons;
 export {
   Person as PersonIcon,
   Settings as SettingsIcon,
   ExitToApp as LogoutIcon,
   Menu as MenuIcon,
-  Dashboard as DashboardIcon,
-  Event as EventIcon,
   Schedule as ScheduleIcon,
   Assessment as AssessmentIcon,
   SportsCricket as CricketIcon,
@@ -58,3 +62,5 @@ export {
   Money as MoneyIcon,
   School as SchoolIcon
 } from '@mui/icons-material'; 
+
+export { DashboardIcon , EventIcon , HistoryIcon , FeedbackIcon };

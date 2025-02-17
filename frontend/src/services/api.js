@@ -138,19 +138,19 @@ export const paymentService = {
 
 // Admin Service
 export const adminService = {
-  // Coach approval methods
+  // User Management
+  getAllUsers: () => api.get('/admin/users'),
+  updateUser: (userId, data) => api.put(`/admin/users/${userId}`, data),
+  deleteUser: (userId) => api.delete(`/admin/users/${userId}`),
+  searchUsers: (query) => api.get('/admin/users', { params: { search: query } }),
+  
+  // Coach Management
   getPendingCoaches: () => api.get('/admin/coaches/pending'),
   approveCoach: (coachId) => api.post(`/admin/coaches/${coachId}/approve`),
   rejectCoach: (coachId, data) => api.post(`/admin/coaches/${coachId}/reject`, data),
   
   // Dashboard
   getDashboardStats: () => api.get('/admin/dashboard'),
-  
-  // User management
-  getAllUsers: () => api.get('/admin/users'),
-  getUserById: (id) => api.get(`/admin/users/${id}`),
-  updateUser: (id, data) => api.put(`/admin/users/${id}`, data),
-  deleteUser: (id) => api.delete(`/admin/users/${id}`),
   
   // Booking management
   getAllBookings: () => api.get('/admin/bookings'),

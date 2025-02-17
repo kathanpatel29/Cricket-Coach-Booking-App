@@ -9,9 +9,44 @@ const availabilitySchema = new mongoose.Schema({
     required: true
   },
   slots: [{
+    startTime: {
+      type: String,
+      required: true
+    },
+    endTime: {
+      type: String,
+      required: true
+    },
+    isBooked: {
+      type: Boolean,
+      default: false
+    }
+  }]
+});
+
+const emergencyOffSchema = new mongoose.Schema({
+  date: {
+    type: Date,
+    required: true
+  },
+  reason: {
     type: String,
     required: true
-  }]
+  },
+  options: {
+    refund: {
+      type: Boolean,
+      default: true
+    },
+    reschedule: {
+      type: Boolean,
+      default: true
+    },
+    cancel: {
+      type: Boolean,
+      default: true
+    }
+  }
 });
 
 const coachSchema = new mongoose.Schema({
@@ -22,7 +57,7 @@ const coachSchema = new mongoose.Schema({
   },
   specializations: [{
     type: String,
-    enum: ['batting', 'bowling', 'fielding', 'wicket-keeping', 'spin-bowling', 'fast-bowling', 'mental-coaching', 'fitness', 'strategy'],
+    enum: ['batting', 'bowling', 'fielding', 'wicket-keeping'],
     required: true
   }],
   experience: {
@@ -42,30 +77,7 @@ const coachSchema = new mongoose.Schema({
     maxlength: 1000
   },
   availability: [availabilitySchema],
-  emergencyOff: [{
-    date: {
-      type: String,
-      required: true
-    },
-    reason: {
-      type: String,
-      required: true
-    },
-    options: {
-      refund: {
-        type: Boolean,
-        default: true
-      },
-      reschedule: {
-        type: Boolean,
-        default: true
-      },
-      cancel: {
-        type: Boolean,
-        default: true
-      }
-    }
-  }],
+  emergencyOff: [emergencyOffSchema],
   certifications: String,
   profileImage: String,
   totalEarnings: {
@@ -110,6 +122,11 @@ const coachSchema = new mongoose.Schema({
   },
   rejectionReason: {
     type: String
+  },
+  approvedAt: Date,
+  approvedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
   },
   documents: [{
     type: {
@@ -171,6 +188,10 @@ const coachSchema = new mongoose.Schema({
   isAvailable: {
     type: Boolean,
     default: true
+  },
+  isApproved: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true,
