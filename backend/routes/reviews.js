@@ -3,6 +3,7 @@ const router = express.Router();
 const reviewController = require("../controllers/reviewController");
 const { protect, authorize } = require("../middleware/authMiddleware");
 
+
 // Public routes
 router.get("/", reviewController.getAllReviews);
 router.get("/coach/:coachId", reviewController.getCoachReviews);
@@ -14,7 +15,7 @@ router.use(protect);
 // Client routes
 router.post("/", authorize("client"), reviewController.createReview);
 router.put("/:id", authorize("client"), reviewController.updateReview);
-router.delete("/:id", authorize("client"), reviewController.deleteReview);
+router.delete("/:id", authorize("client", "admin"), reviewController.deleteReview);
 
 // Admin routes
 router.patch("/:id/moderate", authorize("admin"), reviewController.moderateReview);

@@ -3,10 +3,10 @@ const mongoose = require('mongoose');
 const connectDB = async () => {
   try {
     const options = {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
       serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 45000,
-      retryWrites: true,
-      retryReads: true
     };
 
     const conn = await mongoose.connect(process.env.MONGODB_URI, options);
@@ -17,21 +17,12 @@ const connectDB = async () => {
     });
 
     mongoose.connection.on('disconnected', () => {
-      console.log('MongoDB disconnected. Attempting to reconnect...');
-    });
-
-    mongoose.connection.on('reconnected', () => {
-      console.log('MongoDB reconnected');
+      console.error('MongoDB disconnected');
     });
 
   } catch (error) {
-    console.error(`Error: ${error.message}`);
-    // Don't exit the process on Vercel
-    if (process.env.VERCEL_ENV) {
-      console.error('MongoDB connection failed on Vercel');
-    } else {
-      process.exit(1);
-    }
+    console.error(`Error connecting to MongoDB: ${error.message}`);
+    process.exit(1);
   }
 };
 

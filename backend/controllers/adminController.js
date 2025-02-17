@@ -3,9 +3,9 @@ const Coach = require('../models/Coach');
 const Booking = require('../models/Booking');
 const Review = require('../models/Review');
 const Payment = require('../models/Payment');
-const { AppError, catchAsync } = require('../utils/errorHandler');
-const { formatResponse } = require('../utils/responseFormatter');
 const ExcelJS = require('exceljs');
+const { formatResponse } = require('../utils/responseFormatter');
+const { AppError, catchAsync } = require('../utils/errorHandler');
 
 // User Management
 exports.getAllUsers = catchAsync(async (req, res) => {
@@ -73,77 +73,62 @@ exports.deleteUser = catchAsync(async (req, res) => {
 });
 
 // Coach Management
-exports.getPendingCoaches = catchAsync(async (req, res) => {
+exports.getPendingCoaches = async (req, res) => {
   try {
-    const pendingCoaches = await Coach.find({ approvalStatus: 'pending' })
-      .populate('user', 'name email phone')
-      .sort({ createdAt: -1 });
+    const pendingCoaches = await Coach.find({
+      approvalStatus: 'pending'
+    }).populate('user', 'name email profileImage');
 
-    return res.status(200).json(formatResponse('success', 'Pending coaches retrieved successfully', {
-      coaches: pendingCoaches || [],
-      total: pendingCoaches?.length || 0
-    }));
+    res.json(formatResponse('success', 'Pending coaches retrieved successfully', pendingCoaches));
   } catch (error) {
-    console.error('Error fetching pending coaches:', error);
-    throw new AppError('Failed to fetch pending coaches', 500);
+    res.status(500).json(formatResponse('error', 'Error fetching pending coaches'));
   }
-});
+};
 
-exports.approveCoach = catchAsync(async (req, res) => {
+exports.approveCoach = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { notes } = req.body;
+    const coach = await Coach.findByIdAndUpdate(
+      req.params.id,
+      {
+        approvalStatus: 'approved',
+        isApproved: true,
+        approvalDate: Date.now(),
+        approvedBy: req.user._id
+      },
+      { new: true }
+    ).populate('user', 'name email profileImage');
 
-    const coach = await Coach.findById(id);
     if (!coach) {
       return res.status(404).json(formatResponse('error', 'Coach not found'));
     }
 
-    // Update coach approval status
-    coach.approvalStatus = 'approved';
-    coach.approvalDate = new Date();
-    coach.approvalNotes = notes;
-    await coach.save();
-
-    // Update user role to coach if not already set
-    const user = await User.findById(coach.user);
-    if (user && user.role !== 'coach') {
-      user.role = 'coach';
-      await user.save();
-    }
-
-    // Send email notification to coach
-    // TODO: Implement email notification
-
-    res.json(formatResponse('success', 'Coach approved successfully', { coach }));
+    res.json(formatResponse('success', 'Coach approved successfully', coach));
   } catch (error) {
-    console.error('Error approving coach:', error);
-    res.status(500).json(formatResponse('error', 'Failed to approve coach'));
+    res.status(500).json(formatResponse('error', 'Error approving coach'));
   }
-});
+};
 
 exports.rejectCoach = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { notes } = req.body;
+    const { reason } = req.body;
+    const coach = await User.findById(req.params.id);
 
-    const coach = await Coach.findById(id);
     if (!coach) {
       return res.status(404).json(formatResponse('error', 'Coach not found'));
     }
 
-    // Update coach approval status
+    if (coach.role !== 'coach') {
+      return res.status(400).json(formatResponse('error', 'User is not a coach'));
+    }
+
     coach.approvalStatus = 'rejected';
-    coach.rejectionReason = notes;
+    coach.isApproved = false;
+    coach.rejectionReason = reason;
     await coach.save();
 
-    // Send email notification to coach
-    // TODO: Implement email notification
-
-    res.json(formatResponse('success', 'Coach rejected successfully', { coach }));
+    res.status(200).json(formatResponse('success', 'Coach rejected successfully', coach));
   } catch (error) {
-    console.error('Error rejecting coach:', error);
-    res.status(500).json(formatResponse('error', 'Failed to reject coach'));
+    res.status(500).json(formatResponse('error', 'Error rejecting coach'));
   }
 };
 
@@ -512,4 +497,6 @@ exports.exportRevenue = catchAsync(async (req, res) => {
 
   await workbook.xlsx.write(res);
   res.end();
-}); 
+});
+
+// Add other missing functions similarly 

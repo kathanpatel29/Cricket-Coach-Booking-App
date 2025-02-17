@@ -15,17 +15,19 @@ import {
   Chip,
   OutlinedInput
 } from '@mui/material';
-import { authService } from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 
 const SPECIALIZATIONS = ['batting', 'bowling', 'fielding', 'wicket-keeping'];
 
 const Register = () => {
   const navigate = useNavigate();
+  const { register } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
     role: 'client',
+    adminSecretKey: '',
     specializations: [],
     experience: '',
     hourlyRate: '',
@@ -33,10 +35,15 @@ const Register = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showAdminKey, setShowAdminKey] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+
+    if (name === 'role') {
+      setShowAdminKey(value === 'admin');
+    }
   };
 
   const handleSpecializationChange = (event) => {
@@ -53,20 +60,76 @@ const Register = () => {
     setError('');
 
     try {
-      const response = await authService.register(formData);
-      if (formData.role === 'coach') {
-        navigate('/dashboard', {
-          state: {
-            message: 'Registration successful! Your coach profile is pending admin approval. You will have limited access until approved.'
-          }
-        });
-      } else {
-        navigate('/dashboard', {
-          state: { message: 'Registration successful!' }
-        });
+      // Validate admin registration
+      if (formData.role === 'admin') {
+        if (!formData.adminSecretKey) {
+          setError('Admin secret key is required');
+          setLoading(false);
+          return;
+        }
+
+        // Only send necessary admin data
+        const adminData = {
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+          role: 'admin',
+          adminSecretKey: formData.adminSecretKey
+        };
+
+        const response = await register(adminData);
+        if (response.data.status === 'success') {
+          navigate('/admin-dashboard');
+          return;
+        }
       }
+
+      // Handle coach registration
+      if (formData.role === 'coach') {
+        if (formData.specializations.length === 0) {
+          setError('Please select at least one specialization');
+          setLoading(false);
+          return;
+        }
+
+        if (formData.bio.length < 10) {
+          setError('Bio must be at least 10 characters long');
+          setLoading(false);
+          return;
+        }
+
+        const coachData = {
+          ...formData,
+          experience: Number(formData.experience),
+          hourlyRate: Number(formData.hourlyRate)
+        };
+
+        const response = await register(coachData);
+        if (response.data.status === 'success') {
+          navigate('/coach-dashboard');
+          return;
+        }
+      }
+
+      // Handle client registration
+      if (formData.role === 'client') {
+        const clientData = {
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+          role: 'client'
+        };
+
+        const response = await register(clientData);
+        if (response.data.status === 'success') {
+          navigate('/client-dashboard');
+          return;
+        }
+      }
+
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed');
+      console.error('Registration error:', err);
+      setError(err.response?.data?.message || 'Registration failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -76,7 +139,7 @@ const Register = () => {
     <Box sx={{ p: 3, maxWidth: 600, mx: 'auto', mt: 4 }}>
       <Paper sx={{ p: 4 }}>
         <Typography variant="h5" gutterBottom>
-          Register
+          {formData.role === 'admin' ? 'Admin Registration' : 'Register'}
         </Typography>
 
         {error && (
@@ -124,12 +187,32 @@ const Register = () => {
               name="role"
               value={formData.role}
               onChange={handleChange}
-              required
+              label="Role"
             >
               <MenuItem value="client">Client</MenuItem>
               <MenuItem value="coach">Coach</MenuItem>
+              <MenuItem value="admin">Admin</MenuItem>
             </Select>
           </FormControl>
+
+          {showAdminKey && (
+            <TextField
+              fullWidth
+              label="Admin Secret Key"
+              name="adminSecretKey"
+              type="password"
+              value={formData.adminSecretKey}
+              onChange={handleChange}
+              margin="normal"
+              required
+              error={formData.role === 'admin' && !formData.adminSecretKey}
+              helperText={
+                formData.role === 'admin' && 
+                !formData.adminSecretKey && 
+                'Admin secret key is required'
+              }
+            />
+          )}
 
           {formData.role === 'coach' && (
             <>
@@ -200,6 +283,13 @@ const Register = () => {
                 Until then, you will have limited access to the platform.
               </Alert>
             </>
+          )}
+
+          {formData.role === 'admin' && (
+            <Alert severity="info" sx={{ mt: 2, mb: 2 }}>
+              Admin registration requires a valid admin secret key.
+              Please contact the system administrator if you don't have one.
+            </Alert>
           )}
 
           <Button

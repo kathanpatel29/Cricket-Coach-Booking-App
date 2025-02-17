@@ -39,6 +39,19 @@ const userSchema = new mongoose.Schema({
       return this.role !== 'coach'; // Only coaches need approval
     }
   },
+  approvalStatus: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected'],
+    default: function() {
+      return this.role === 'coach' ? 'pending' : 'approved';
+    }
+  },
+  approvalDate: Date,
+  approvedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  rejectionReason: String,
   passwordChangedAt: Date,
   passwordResetToken: String,
   passwordResetExpires: Date,
@@ -55,14 +68,29 @@ const userSchema = new mongoose.Schema({
 
 // Password hashing middleware
 userSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) return next();
-  this.password = await bcrypt.hash(this.password, 12);
-  next();
+  try {
+    // Only hash password if it's modified or new
+    if (!this.isModified('password')) return next();
+
+    // Generate salt and hash password
+    const salt = await bcrypt.genSalt(12);
+    this.password = await bcrypt.hash(this.password, salt);
+    next();
+  } catch (error) {
+    next(error);
+  }
 });
 
 // Compare password method
 userSchema.methods.comparePassword = async function(candidatePassword) {
-  return await bcrypt.compare(candidatePassword, this.password);
+  try {
+    return await bcrypt.compare(candidatePassword, this.password);
+  } catch (error) {
+    throw new Error('Error comparing passwords');
+  }
 };
 
-module.exports = mongoose.model('User', userSchema);
+//Prevent Mongoose from recompiling the model
+const User = mongoose.models.User || mongoose.model('User', userSchema);
+
+module.exports = User;

@@ -5,6 +5,8 @@ import 'react-calendar/dist/Calendar.css';
 import { styled } from '@mui/material/styles';
 import { Box, Typography, Paper, Grid, Card, CardContent, CardActions, Button, Chip, Dialog, DialogTitle, DialogContent, DialogActions, Alert, FormGroup, FormControlLabel, Checkbox, TextField } from '@mui/material';
 import { toast } from 'react-hot-toast';
+import DatePicker from 'react-datepicker';
+import "react-datepicker/dist/react-datepicker.css";
 
 // Styled wrapper for the calendar
 const StyledCalendarWrapper = styled('div')({

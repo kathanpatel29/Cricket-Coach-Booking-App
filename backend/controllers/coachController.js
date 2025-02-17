@@ -60,86 +60,132 @@ exports.updateCoachProfile = async (req, res) => {
   }
 };
 
-// Get all coaches (only approved and available)
+// Get all coaches (public)
 exports.getAllCoaches = async (req, res) => {
   try {
     const coaches = await Coach.find({
-      status: 'approved',
-      isProfileComplete: true,
-      hasSetAvailability: true
+      isApproved: true,
+      isProfileComplete: true
     }).populate('user', 'name email profileImage');
 
-    res.json({
-      data: {
-        coaches: coaches.map(coach => ({
-          _id: coach._id,
-          name: coach.user.name,
-          email: coach.user.email,
-          profileImage: coach.user.profileImage,
-          specializations: coach.specializations,
-          experience: coach.experience,
-          bio: coach.bio,
-          hourlyRate: coach.hourlyRate,
-          rating: coach.rating,
-          totalReviews: coach.totalReviews
-        }))
-      }
-    });
+    res.json(formatResponse('success', 'Coaches retrieved successfully', coaches));
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json(formatResponse('error', 'Error fetching coaches'));
   }
 };
 
-// Get coach by ID (with availability check)
+// Get coach by ID
 exports.getCoachById = async (req, res) => {
   try {
     const coach = await Coach.findById(req.params.id)
       .populate('user', 'name email profileImage');
 
     if (!coach) {
-      return res.status(404).json({ message: 'Coach not found' });
+      return res.status(404).json(formatResponse('error', 'Coach not found'));
     }
 
-    if (!coach.isAvailableForBooking()) {
-      return res.status(403).json({ 
-        message: 'This coach is not available for booking at the moment' 
-      });
-    }
-
-    res.json({
-      data: {
-        coach: {
-          _id: coach._id,
-          name: coach.user.name,
-          email: coach.user.email,
-          profileImage: coach.user.profileImage,
-          specializations: coach.specializations,
-          experience: coach.experience,
-          bio: coach.bio,
-          hourlyRate: coach.hourlyRate,
-          availability: coach.availability,
-          rating: coach.rating,
-          totalReviews: coach.totalReviews
-        }
-      }
-    });
+    res.json(formatResponse('success', 'Coach retrieved successfully', coach));
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json(formatResponse('error', 'Error fetching coach details'));
   }
 };
 
-exports.getCoachProfile = async (req, res) => {
+// Get coach profile
+exports.getProfile = async (req, res) => {
   try {
-    const coach = await Coach.findOne({ user: req.user.id })
-      .populate("user", "name email isApproved");
-    
+    const coach = await Coach.findOne({ user: req.user._id })
+      .populate('user', 'name email profileImage');
+
     if (!coach) {
       return res.status(404).json(formatResponse('error', 'Coach profile not found'));
     }
 
-    res.json(formatResponse('success', 'Coach profile retrieved successfully', { coach }));
+    res.json(formatResponse('success', 'Profile retrieved successfully', coach));
   } catch (error) {
-    res.status(500).json(formatResponse('error', error.message));
+    res.status(500).json(formatResponse('error', 'Error fetching profile'));
+  }
+};
+
+// Update coach profile
+exports.updateProfile = async (req, res) => {
+  try {
+    const coach = await Coach.findOneAndUpdate(
+      { user: req.user._id },
+      req.body,
+      { new: true }
+    ).populate('user', 'name email profileImage');
+
+    if (!coach) {
+      return res.status(404).json(formatResponse('error', 'Coach profile not found'));
+    }
+
+    res.json(formatResponse('success', 'Coach profile updated successfully', { coach }));
+  } catch (error) {
+    res.status(500).json(formatResponse('error', 'Error updating profile'));
+  }
+};
+
+// Get coach bookings
+exports.getBookings = async (req, res) => {
+  try {
+    const bookings = await Booking.find({ coach: req.user._id })
+      .populate('client', 'name email profileImage')
+      .sort('-createdAt');
+
+    res.json(formatResponse('success', 'Bookings retrieved successfully', { bookings }));
+  } catch (error) {
+    res.status(500).json(formatResponse('error', 'Error fetching bookings'));
+  }
+};
+
+// Update booking status
+exports.updateBookingStatus = async (req, res) => {
+  try {
+    const booking = await Booking.findOneAndUpdate(
+      { _id: req.params.id, coach: req.user._id },
+      { status: req.body.status },
+      { new: true }
+    ).populate('client', 'name email profileImage');
+
+    if (!booking) {
+      return res.status(404).json(formatResponse('error', 'Booking not found'));
+    }
+
+    res.json(formatResponse('success', 'Booking status updated successfully', { booking }));
+  } catch (error) {
+    res.status(500).json(formatResponse('error', 'Error updating booking status'));
+  }
+};
+
+// Get coach dashboard stats
+exports.getDashboardStats = async (req, res) => {
+  try {
+    const [bookings, reviews, earnings] = await Promise.all([
+      Booking.find({ coach: req.user._id }),
+      Review.find({ coach: req.user._id }),
+      Booking.find({ 
+        coach: req.user._id,
+        status: 'completed',
+        paymentStatus: 'paid'
+      })
+    ]);
+
+    const stats = {
+      totalBookings: bookings.length,
+      upcomingBookings: bookings.filter(b => 
+        b.status === 'confirmed' && new Date(b.date) > new Date()
+      ).length,
+      totalEarnings: earnings.reduce((acc, b) => acc + b.amount, 0),
+      averageRating: reviews.length > 0
+        ? reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length
+        : 0,
+      completedBookings: bookings.filter(b => b.status === 'completed').length,
+      pendingBookings: bookings.filter(b => b.status === 'pending').length
+    };
+
+    res.json(formatResponse('success', 'Stats retrieved successfully', stats));
+  } catch (error) {
+    res.status(500).json(formatResponse('error', 'Error fetching dashboard stats'));
   }
 };
 
@@ -165,19 +211,16 @@ exports.updateAvailability = async (req, res) => {
   try {
     const coach = await Coach.findOne({ user: req.user._id });
     if (!coach) {
-      return res.status(404).json({ message: 'Coach not found' });
+      return res.status(404).json(formatResponse('error', 'Coach not found'));
     }
 
     coach.availability = req.body.availability;
     coach.hasSetAvailability = req.body.availability.length > 0;
     await coach.save();
 
-    res.json({
-      message: 'Availability updated successfully',
-      data: { availability: coach.availability }
-    });
+    res.json(formatResponse('success', 'Availability updated successfully', { availability: coach.availability }));
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json(formatResponse('error', error.message));
   }
 };
 
@@ -188,7 +231,7 @@ exports.deleteAvailability = async (req, res) => {
     
     const coach = await Coach.findOne({ user: req.user.id });
     if (!coach) {
-      return res.status(404).json({ message: "Coach profile not found" });
+      return res.status(404).json(formatResponse('error', "Coach profile not found"));
     }
 
     // Remove availability for the specified date
@@ -198,10 +241,10 @@ exports.deleteAvailability = async (req, res) => {
     );
 
     await coach.save();
-    res.json({ message: "Availability deleted successfully" });
+    res.json(formatResponse('success', "Availability deleted successfully"));
   } catch (error) {
     console.error('Delete availability error:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json(formatResponse('error', error.message));
   }
 };
 
@@ -250,17 +293,16 @@ exports.rejectCoach = async (req, res) => {
 exports.getCoachPublicProfile = async (req, res) => {
   try {
     const coach = await Coach.findById(req.params.id)
-      .populate('user', 'name email')
-      .populate('reviews')
-      .select('-availability -earnings');
+      .populate('user', 'name email profileImage')
+      .select('specializations experience hourlyRate bio reviews rating');
 
     if (!coach) {
       return res.status(404).json(formatResponse('error', 'Coach not found'));
     }
 
-    res.json(formatResponse('success', 'Coach profile retrieved successfully', { coach }));
+    res.json(formatResponse('success', 'Coach profile retrieved successfully', coach));
   } catch (error) {
-    res.status(500).json(formatResponse('error', error.message));
+    res.status(500).json(formatResponse('error', 'Error fetching coach profile'));
   }
 };
 
@@ -289,40 +331,6 @@ exports.deleteTimeSlot = async (req, res) => {
 
     await coach.save();
     res.json(formatResponse('success', 'Time slot deleted successfully'));
-  } catch (error) {
-    res.status(500).json(formatResponse('error', error.message));
-  }
-};
-
-// Get coach's bookings
-exports.getCoachBookings = async (req, res) => {
-  try {
-    const bookings = await Booking.find({ coach: req.user.id })
-      .populate('client', 'name email')
-      .sort('-createdAt');
-
-    res.json(formatResponse('success', 'Bookings retrieved successfully', { bookings }));
-  } catch (error) {
-    res.status(500).json(formatResponse('error', error.message));
-  }
-};
-
-// Update booking status
-exports.updateBookingStatus = async (req, res) => {
-  try {
-    const booking = await Booking.findById(req.params.bookingId);
-    if (!booking) {
-      return res.status(404).json(formatResponse('error', 'Booking not found'));
-    }
-
-    if (booking.coach.toString() !== req.user.id) {
-      return res.status(403).json(formatResponse('error', 'Not authorized'));
-    }
-
-    booking.status = req.body.status;
-    await booking.save();
-
-    res.json(formatResponse('success', 'Booking status updated successfully', { booking }));
   } catch (error) {
     res.status(500).json(formatResponse('error', error.message));
   }
@@ -388,48 +396,6 @@ exports.getCoachReviews = async (req, res) => {
   }
 };
 
-// Get dashboard stats
-exports.getDashboardStats = async (req, res) => {
-  try {
-    const [bookings, reviews, earnings] = await Promise.all([
-      Booking.find({ coach: req.user.id }),
-      Review.find({ coach: req.user.id }),
-      Booking.find({ 
-        coach: req.user.id,
-        status: 'completed',
-        paymentStatus: 'paid'
-      })
-    ]);
-
-    // Calculate stats
-    const totalSessions = bookings.length;
-    const upcomingSessions = bookings.filter(b => 
-      b.status === 'confirmed' && new Date(b.date) > new Date()
-    ).length;
-    const totalEarnings = earnings.reduce((acc, b) => acc + b.amount, 0);
-    const averageRating = reviews.length > 0
-      ? reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length
-      : 0;
-    const completedSessions = bookings.filter(b => b.status === 'completed').length;
-    const completionRate = totalSessions > 0
-      ? (completedSessions / totalSessions) * 100
-      : 0;
-
-    const stats = {
-      totalSessions,
-      upcomingSessions,
-      totalEarnings,
-      averageRating,
-      totalReviews: reviews.length,
-      completionRate: Math.round(completionRate)
-    };
-
-    res.json(formatResponse('success', 'Dashboard stats retrieved successfully', { stats }));
-  } catch (error) {
-    res.status(500).json(formatResponse('error', error.message));
-  }
-};
-
 // Get coach's sessions
 exports.getCoachSessions = async (req, res) => {
   try {
@@ -459,58 +425,89 @@ exports.getCoachSessions = async (req, res) => {
 // Get coach's emergency off dates
 exports.getEmergencyOff = async (req, res) => {
   try {
-    const coach = await Coach.findOne({ user: req.user.id });
+    const coach = await Coach.findOne({ user: req.user._id })
+      .select('emergencyOff');
+
     if (!coach) {
-      return res.status(404).json(formatResponse('error', 'Coach profile not found'));
+      return res.status(404).json(formatResponse('error', 'Coach not found'));
     }
 
-    return res.json(formatResponse('success', 'Emergency off dates retrieved successfully', {
-      emergencyOff: coach.emergencyOff || []
-    }));
+    res.json(formatResponse('success', 'Emergency off dates retrieved successfully', 
+      coach.emergencyOff || []
+    ));
   } catch (error) {
-    console.error('Error in getEmergencyOff:', error);
-    return res.status(500).json(formatResponse('error', 'Failed to retrieve emergency off dates'));
+    res.status(500).json(formatResponse('error', 'Error fetching emergency off dates'));
   }
 };
 
 // Set emergency off dates
 exports.setEmergencyOff = async (req, res) => {
   try {
-    const { date, reason, options } = req.body;
+    const coach = await Coach.findOneAndUpdate(
+      { user: req.user._id },
+      { $push: { emergencyOff: req.body.date } },
+      { new: true }
+    );
 
-    if (!date || !reason) {
-      return res.status(400).json(formatResponse('error', 'Date and reason are required'));
-    }
-
-    const coach = await Coach.findOne({ user: req.user.id });
     if (!coach) {
-      return res.status(404).json(formatResponse('error', 'Coach profile not found'));
+      return res.status(404).json(formatResponse('error', 'Coach not found'));
     }
 
-    // Check if date already exists
-    const existingDate = coach.emergencyOff.find(off => off.date === date);
-    if (existingDate) {
-      return res.status(400).json(formatResponse('error', 'Emergency off already set for this date'));
+    res.json(formatResponse('success', 'Emergency off date added successfully', 
+      coach.emergencyOff
+    ));
+  } catch (error) {
+    res.status(500).json(formatResponse('error', 'Error setting emergency off date'));
+  }
+};
+
+// Schedule
+exports.getSchedule = async (req, res) => {
+  try {
+    const coach = await Coach.findOne({ user: req.user._id })
+      .select('schedule');
+
+    res.json(formatResponse('success', 'Schedule retrieved successfully', {
+      schedule: coach.schedule || []
+    }));
+  } catch (error) {
+    res.status(500).json(formatResponse('error', 'Error fetching schedule'));
+  }
+};
+
+exports.updateSchedule = async (req, res) => {
+  try {
+    const coach = await Coach.findOneAndUpdate(
+      { user: req.user._id },
+      { schedule: req.body.schedule },
+      { new: true }
+    );
+
+    res.json(formatResponse('success', 'Schedule updated successfully', {
+      schedule: coach.schedule
+    }));
+  } catch (error) {
+    res.status(500).json(formatResponse('error', 'Error updating schedule'));
+  }
+};
+
+// Add this function if it's missing
+exports.removeEmergencyOff = async (req, res) => {
+  try {
+    const coach = await Coach.findOneAndUpdate(
+      { user: req.user._id },
+      { $pull: { emergencyOff: req.params.date } },
+      { new: true }
+    );
+
+    if (!coach) {
+      return res.status(404).json(formatResponse('error', 'Coach not found'));
     }
 
-    // Add new emergency off date
-    coach.emergencyOff.push({
-      date,
-      reason,
-      options: {
-        refund: options?.refund ?? true,
-        reschedule: options?.reschedule ?? true,
-        cancel: options?.cancel ?? true
-      }
-    });
-
-    await coach.save();
-
-    return res.json(formatResponse('success', 'Emergency off set successfully', {
+    res.json(formatResponse('success', 'Emergency off date removed successfully', {
       emergencyOff: coach.emergencyOff
     }));
   } catch (error) {
-    console.error('Error in setEmergencyOff:', error);
-    return res.status(500).json(formatResponse('error', 'Failed to set emergency off'));
+    res.status(500).json(formatResponse('error', 'Error removing emergency off date'));
   }
 };

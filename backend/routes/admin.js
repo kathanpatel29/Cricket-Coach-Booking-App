@@ -1,15 +1,14 @@
 const express = require("express");
 const router = express.Router();
-const { protect, admin } = require("../middleware/authMiddleware");
+const { protect, authorize } = require("../middleware/authMiddleware");
 const adminController = require("../controllers/adminController");
 
 // Protect all admin routes
 router.use(protect);
-router.use(admin);
+router.use(authorize('admin'));
 
-// Dashboard and Stats
+// Dashboard
 router.get('/dashboard', adminController.getDashboardStats);
-router.get('/stats', adminController.getDashboardStats); // Keep for backward compatibility
 
 // User Management
 router.get('/users', adminController.getAllUsers);
@@ -40,5 +39,10 @@ router.put('/reviews/:id/moderate', adminController.moderateReview);
 router.get('/export/users', adminController.exportUsers);
 router.get('/export/bookings', adminController.exportBookings);
 router.get('/export/revenue', adminController.exportRevenue);
+
+// Coach approval routes (admin only)
+router.get('/pending-coaches', protect, authorize('admin'), adminController.getPendingCoaches);
+router.post('/coaches/:id/approve', protect, authorize('admin'), adminController.approveCoach);
+router.post('/coaches/:id/reject', protect, authorize('admin'), adminController.rejectCoach);
 
 module.exports = router;

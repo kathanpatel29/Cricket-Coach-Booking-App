@@ -3,14 +3,14 @@ const asyncHandler = require('express-async-handler');
 const Booking = require("../models/Booking");
 const Coach = require("../models/Coach");
 const { AppError, catchAsync } = require("../utils/errorHandler");
-const { successResponse, errorResponse } = require("../utils/responseFormatter");
-const User = require('../models/user');
+const { successResponse, errorResponse, formatResponse } = require("../utils/responseFormatter");
+const User = require('../models/User');
 const { sendBookingConfirmation, sendCoachNotification } = require('../utils/emailService');
 
 // @desc    Create a new booking
 // @route   POST /api/bookings
 // @access  Private/Client
-const createBooking = catchAsync(async (req, res) => {
+exports.createBooking = catchAsync(async (req, res) => {
   const { coachId, date, timeSlot, duration } = req.body;
 
   // Validate coach exists and is approved
@@ -59,24 +59,24 @@ const createBooking = catchAsync(async (req, res) => {
   await sendBookingConfirmation(user.email, bookingDetails);
   await sendCoachNotification(coach.email, bookingDetails);
 
-  successResponse(res, 201, booking, "Booking created successfully");
+  res.status(201).json(formatResponse('success', 'Booking created successfully', booking));
 });
 
 // @desc    Get client's bookings
 // @route   GET /api/bookings/client
 // @access  Private/Client
-const getClientBookings = catchAsync(async (req, res) => {
+exports.getClientBookings = catchAsync(async (req, res) => {
   const bookings = await Booking.find({ client: req.user._id })
     .populate('coach', 'name email')
     .sort({ date: -1 });
 
-  successResponse(res, 200, { bookings }, "Bookings retrieved successfully");
+  res.json(formatResponse('success', 'Bookings retrieved successfully', bookings));
 });
 
 // @desc    Get coach's bookings
 // @route   GET /api/bookings/coach
 // @access  Private/Coach
-const getCoachBookings = catchAsync(async (req, res) => {
+exports.getCoachBookings = catchAsync(async (req, res) => {
   const { status, date, page = 1, limit = 10 } = req.query;
   
   const coach = await Coach.findOne({ user: req.user.id });
@@ -96,20 +96,20 @@ const getCoachBookings = catchAsync(async (req, res) => {
 
   const total = await Booking.countDocuments(query);
 
-  successResponse(res, 200, {
+  res.json(formatResponse('success', 'Bookings retrieved successfully', {
     bookings,
     pagination: {
       total,
       page: parseInt(page),
       pages: Math.ceil(total / limit)
     }
-  });
+  }));
 });
 
 // @desc    Get booking by ID
 // @route   GET /api/bookings/:id
 // @access  Private
-const getBookingById = catchAsync(async (req, res) => {
+exports.getBookingById = catchAsync(async (req, res) => {
   const booking = await Booking.findById(req.params.id)
     .populate("client", "name email")
     .populate("coach", "user specializations hourlyRate");
@@ -118,13 +118,13 @@ const getBookingById = catchAsync(async (req, res) => {
     throw new AppError("Booking not found", 404);
   }
 
-  successResponse(res, 200, booking, "Booking details retrieved successfully");
+  res.json(formatResponse('success', 'Booking retrieved successfully', booking));
 });
 
 // @desc    Update booking status
 // @route   PATCH /api/bookings/:id/status
 // @access  Private/Coach
-const updateBookingStatus = catchAsync(async (req, res) => {
+exports.updateBookingStatus = catchAsync(async (req, res) => {
   const { status, reason } = req.body;
   const booking = await Booking.findById(req.params.id);
 
@@ -144,13 +144,13 @@ const updateBookingStatus = catchAsync(async (req, res) => {
   }
 
   await booking.save();
-  successResponse(res, 200, booking, "Booking status updated successfully");
+  res.json(formatResponse('success', 'Booking status updated successfully', booking));
 });
 
 // @desc    Reschedule booking
 // @route   PATCH /api/bookings/reschedule/:id
 // @access  Private/Client
-const rescheduleBooking = catchAsync(async (req, res) => {
+exports.rescheduleBooking = catchAsync(async (req, res) => {
   const { newDate, newTimeSlot } = req.body;
   const booking = await Booking.findById(req.params.id);
   
@@ -163,13 +163,13 @@ const rescheduleBooking = catchAsync(async (req, res) => {
   booking.timeSlot = newTimeSlot;
   await booking.save();
   
-  successResponse(res, 200, booking, "Booking rescheduled successfully");
+  res.json(formatResponse('success', 'Booking rescheduled successfully', booking));
 });
 
 // @desc    Cancel booking
 // @route   PATCH /api/bookings/cancel/:id
 // @access  Private/Client
-const cancelBooking = catchAsync(async (req, res) => {
+exports.cancelBooking = catchAsync(async (req, res) => {
   const booking = await Booking.findById(req.params.id);
   
   if (!booking) {
@@ -187,65 +187,39 @@ const cancelBooking = catchAsync(async (req, res) => {
   booking.cancelledBy = req.user.id;
   await booking.save();
   
-  successResponse(res, 200, booking, "Booking cancelled successfully");
+  res.json(formatResponse('success', 'Booking cancelled successfully', booking));
 });
 
 // @desc    Get available slots for a coach
 // @route   GET /api/bookings/slots/:coachId
 // @access  Public
-const getAvailableSlots = catchAsync(async (req, res) => {
-  const { coachId } = req.params;
-  const { date } = req.query;
-
-  if (!date) {
-    return res.status(400).json({
-      status: 'error',
-      message: 'Date parameter is required'
-    });
-  }
-
+exports.getAvailableSlots = async (req, res) => {
   try {
-    // Find coach and populate user information for approval status
-    const coach = await Coach.findById(coachId).populate('user', 'isApproved');
-    
+    const { coachId } = req.params;
+    const { date } = req.query;
+
+    if (!date) {
+      return res.status(400).json(formatResponse('error', 'Date parameter is required'));
+    }
+
+    const coach = await Coach.findById(coachId)
+      .populate('user', 'isApproved');
+
     if (!coach) {
-      return res.status(404).json({
-        status: 'error',
-        message: 'Coach not found'
-      });
+      return res.status(404).json(formatResponse('error', 'Coach not found'));
     }
 
     if (!coach.user?.isApproved) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Coach is not approved for bookings'
-      });
+      return res.status(400).json(formatResponse('error', 'Coach is not approved for bookings'));
     }
 
-    // Check if coach has set any availability
-    if (!coach.availability || coach.availability.length === 0) {
-      return res.status(200).json({
-        status: 'success',
-        data: {
-          slots: []
-        },
-        message: 'No availability set for this coach'
-      });
-    }
-
-    // Find availability for the requested date
-    const availability = coach.availability.find(
-      slot => new Date(slot.date).toDateString() === new Date(date).toDateString()
+    // Get schedule for the requested date
+    const schedule = coach.schedule?.find(s => 
+      new Date(s.date).toDateString() === new Date(date).toDateString()
     );
 
-    if (!availability) {
-      return res.status(200).json({
-        status: 'success',
-        data: {
-          slots: []
-        },
-        message: 'No slots available for selected date'
-      });
+    if (!schedule) {
+      return res.json(formatResponse('success', 'No slots available for this date', []));
     }
 
     // Get existing bookings for that date
@@ -260,28 +234,16 @@ const getAvailableSlots = catchAsync(async (req, res) => {
 
     // Filter out booked slots
     const bookedSlots = existingBookings.map(booking => booking.timeSlot);
-    const availableSlots = availability.slots.filter(slot => !bookedSlots.includes(slot));
+    const availableSlots = schedule.slots.filter(slot => !bookedSlots.includes(slot));
 
-    return res.status(200).json({
-      status: 'success',
-      data: {
-        slots: availableSlots
-      },
-      message: 'Available slots retrieved successfully'
-    });
-
+    res.json(formatResponse('success', 'Available slots retrieved successfully', availableSlots));
   } catch (error) {
-    console.error('Error in getAvailableSlots:', error);
-    return res.status(500).json({
-      status: 'error',
-      message: 'Failed to fetch available slots',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
+    res.status(500).json(formatResponse('error', 'Error fetching available slots'));
   }
-});
+};
 
 // Helper function to validate status transitions
-function isValidStatusTransition(currentStatus, newStatus) {
+exports.isValidStatusTransition = function(currentStatus, newStatus) {
   const validTransitions = {
     pending: ['confirmed', 'cancelled'],
     confirmed: ['completed', 'cancelled', 'no-show'],
@@ -292,14 +254,3 @@ function isValidStatusTransition(currentStatus, newStatus) {
 
   return validTransitions[currentStatus]?.includes(newStatus);
 }
-
-module.exports = {
-  createBooking,
-  getClientBookings,
-  getCoachBookings,
-  getBookingById,
-  updateBookingStatus,
-  rescheduleBooking,
-  cancelBooking,
-  getAvailableSlots
-};

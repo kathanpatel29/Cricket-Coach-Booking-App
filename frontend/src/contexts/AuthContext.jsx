@@ -1,8 +1,17 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
+import { authService } from '../services/api.js';
 
 // Create and export the context
-export const AuthContext = createContext(null);
+export const AuthContext = createContext({
+  user: null,
+  loading: true,
+  error: null,
+  login: () => {},
+  register: () => {},
+  logout: () => {},
+  updateProfile: () => {}
+});
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -17,56 +26,92 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Add storage event listener
   useEffect(() => {
-    checkAuthStatus();
+    const handleStorageChange = (e) => {
+      if (e.key === 'user') {
+        if (e.newValue) {
+          setUser(JSON.parse(e.newValue));
+        } else {
+          setUser(null);
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  const checkAuthStatus = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      if (token) {
-        const response = await axios.get('/api/auth/me', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setUser(response.data.user);
+  // Initial auth check
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const storedUser = localStorage.getItem('user');
+
+        if (token && storedUser) {
+          setUser(JSON.parse(storedUser));
+          
+          // Verify token validity
+          const response = await authService.getProfile();
+          if (response.data.status === 'success') {
+            setUser(response.data.user);
+          } else {
+            logout();
+          }
+        }
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        logout();
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Auth status check failed:', error);
-      localStorage.removeItem('token');
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+
+    checkAuth();
+  }, []);
 
   const login = async (loginData) => {
     try {
-      const response = await axios.post('/api/auth/login', loginData);
-      const { token, user } = response.data;
-      localStorage.setItem('token', token);
-      setUser(user);
-      return user;
+      const response = await authService.login(loginData);
+      if (response.data.status === 'success') {
+        const { user, token } = response.data.data;
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(user));
+        setUser(user);
+        return response;
+      }
+      throw new Error('Login failed');
     } catch (error) {
-      setError(error.response?.data?.message || 'Login failed');
+      console.error('Login error:', error);
       throw error;
     }
   };
 
   const register = async (userData) => {
     try {
-      const response = await axios.post('/api/auth/register', userData);
-      const { token, user } = response.data;
-      localStorage.setItem('token', token);
-      setUser(user);
-      return user;
+      console.log('AuthContext: Starting registration');
+      const response = await authService.register(userData);
+      
+      if (response.data.status === 'success') {
+        console.log('AuthContext: Registration successful');
+        const { token, user } = response.data.data;
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(user));
+        setUser(user);
+        return response;
+      }
+      
+      throw new Error('Registration failed');
     } catch (error) {
-      setError(error.response?.data?.message || 'Registration failed');
+      console.error('AuthContext: Registration error:', error);
       throw error;
     }
   };
 
   const logout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('user');
     setUser(null);
   };
 
@@ -95,7 +140,7 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 };

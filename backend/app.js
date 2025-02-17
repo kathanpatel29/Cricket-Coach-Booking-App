@@ -4,46 +4,79 @@ const { errorResponse } = require('./utils/responseFormatter');
 
 const app = express();
 
-// Middleware
-app.use(cors({
+// CORS Configuration
+const corsOptions = {
   origin: process.env.FRONTEND_URL || 'http://localhost:3000',
   credentials: true,
-  exposedHeaders: ['Content-Range', 'X-Content-Range']
-}));
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: [
+    'Content-Type', 
+    'Authorization', 
+    'X-Requested-With', 
+    'Accept', 
+    'Origin'
+  ]
+};
+
+// Apply CORS middleware
+app.use(cors(corsOptions));
+
+// Handle preflight requests
+app.options('*', cors(corsOptions));
+
+// Body parser middleware
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// Routes
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/bookings', require('./routes/bookings'));
-app.use('/api/coaches', require('./routes/coaches'));
-app.use('/api/reviews', require('./routes/reviews'));
-app.use('/api/payments', require('./routes/payments'));
-app.use('/api/admin', require('./routes/admin'));
-app.use('/api/reports', require('./routes/reports'));
+// Import routes
+const authRoutes = require('./routes/auth');
+const userRoutes = require('./routes/users');
+const coachRoutes = require('./routes/coaches');
+const bookingRoutes = require('./routes/bookings');
+const reviewRoutes = require('./routes/reviews');
+const adminRoutes = require('./routes/admin');
+const paymentRoutes = require('./routes/payments');
 
-// Global error handler
+// Use routes
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/coaches', coachRoutes);
+app.use('/api/bookings', bookingRoutes);
+app.use('/api/reviews', reviewRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/payments', paymentRoutes);
+
+// Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Error:', err);
 
-  if (err.name === 'ValidationError') {
-    return res.status(400).json(errorResponse('Validation Error', err.message));
-  }
-
-  if (err.name === 'CastError') {
-    return res.status(400).json(errorResponse('Invalid ID', 'Please provide a valid ID'));
-  }
-
+  // MongoDB duplicate key error
   if (err.code === 11000) {
-    return res.status(400).json(errorResponse('Duplicate Error', 'Duplicate field value entered'));
+    return res.status(400).json({
+      status: 'error',
+      message: 'Email already exists'
+    });
   }
 
+  // Validation error
+  if (err.name === 'ValidationError') {
+    const messages = Object.values(err.errors).map(val => val.message);
+    return res.status(400).json({
+      status: 'error',
+      message: messages.join(', ')
+    });
+  }
+
+  // JWT error
   if (err.name === 'JsonWebTokenError') {
-    return res.status(401).json(errorResponse('Authentication Error', 'Invalid token'));
+    return res.status(401).json({
+      status: 'error',
+      message: 'Invalid token'
+    });
   }
 
-  const statusCode = err.statusCode || 500;
-  const message = err.message || 'Internal Server Error';
-  res.status(statusCode).json(errorResponse(message));
+  // Default error
+  res.status(err.status || 500).json(errorResponse(err.message || 'Internal server error'));
 });
 
 module.exports = app; 

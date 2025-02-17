@@ -2,6 +2,7 @@ import { useState, useContext, useEffect } from "react"; // Add useEffect here
 import { useNavigate, useLocation } from "react-router-dom";
 import { AuthContext } from "../../contexts/AuthContext";
 import Alert from "../../components/common/Alert";
+import { authService } from "../../services/api.js";
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -14,6 +15,7 @@ const Login = () => {
   const { login } = useContext(AuthContext);
   const navigate = useNavigate();
   const location = useLocation();
+  const [emailError, setEmailError] = useState("");
 
   useEffect(() => {
     if (location.state?.email) {
@@ -24,11 +26,45 @@ const Login = () => {
     }
   }, [location.state]);
 
+  useEffect(() => {
+    // Check if email contains 'admin' and show admin key field
+    if (formData.email.toLowerCase().includes('admin')) {
+      setShowAdminKey(true);
+    } else {
+      setShowAdminKey(false);
+      setFormData(prev => ({ ...prev, adminSecretKey: '' }));
+    }
+  }, [formData.email]);
+
   const handleChange = (e) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
     });
+    
+    // Clear errors when user types
+    setError('');
+    setEmailError('');
+  };
+
+  const handleEmailBlur = async (e) => {
+    const email = e.target.value;
+    if (email) {
+      try {
+        const response = await authService.checkEmail(email);
+        if (!response.data.exists) {
+          setEmailError("No account found with this email");
+        } else {
+          setEmailError("");
+          // Show admin key field if it's an admin email
+          if (email.toLowerCase().includes('admin')) {
+            setShowAdminKey(true);
+          }
+        }
+      } catch (error) {
+        console.error('Email check error:', error);
+      }
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -36,36 +72,36 @@ const Login = () => {
     setError("");
 
     try {
-      // Check if email is for admin
+      // Validate admin login
       if (formData.email.toLowerCase().includes('admin')) {
-        setShowAdminKey(true);
         if (!formData.adminSecretKey) {
-          setError('Admin secret key is required');
+          setError('Admin secret key is required for admin login');
           return;
         }
       }
 
-      const loginData = {
+      const response = await login({
         email: formData.email,
         password: formData.password,
         ...(showAdminKey && { adminSecretKey: formData.adminSecretKey })
-      };
+      });
 
-      const user = await login(loginData);
-      
-      // Navigate based on user role
-      switch (user.role) {
-        case "admin":
-          navigate("/admin-dashboard");
-          break;
-        case "coach":
-          navigate("/coach/dashboard");
-          break;
-        default:
-          navigate("/dashboard");
+      if (response.data.status === 'success') {
+        const { role } = response.data.data.user;
+        
+        switch (role) {
+          case 'admin':
+            navigate('/admin-dashboard');
+            break;
+          case 'coach':
+            navigate('/coach-dashboard');
+            break;
+          default:
+            navigate('/dashboard');
+        }
       }
     } catch (error) {
-      setError(error.response?.data?.message || "Login failed");
+      setError(error.response?.data?.message || 'Login failed');
     }
   };
 
@@ -91,17 +127,18 @@ const Login = () => {
                 name="email"
                 type="email"
                 required
-                className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                className={`appearance-none rounded-md relative block w-full px-3 py-2 border ${
+                  emailError ? 'border-red-500' : 'border-gray-300'
+                } placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm`}
                 value={formData.email}
                 onChange={handleChange}
-                onBlur={(e) => {
-                  if (e.target.value.toLowerCase().includes('admin')) {
-                    setShowAdminKey(true);
-                  } else {
-                    setShowAdminKey(false);
-                  }
-                }}
+                onBlur={handleEmailBlur}
               />
+              {emailError && (
+                <p className="mt-1 text-sm text-red-600">
+                  {emailError}
+                </p>
+              )}
             </div>
 
             <div>
@@ -128,11 +165,14 @@ const Login = () => {
                   id="adminSecretKey"
                   name="adminSecretKey"
                   type="password"
-                  required
+                  required={showAdminKey}
                   className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
                   value={formData.adminSecretKey}
                   onChange={handleChange}
                 />
+                <p className="mt-1 text-sm text-gray-500">
+                  Required for admin login. Contact system administrator if you don't have it.
+                </p>
               </div>
             )}
           </div>
