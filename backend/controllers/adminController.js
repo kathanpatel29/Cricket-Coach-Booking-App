@@ -235,100 +235,74 @@ exports.moderateReview = catchAsync(async (req, res) => {
 });
 
 // Dashboard Stats
-exports.getDashboardStats = catchAsync(async (req, res) => {
+exports.getDashboardStats = async (req, res) => {
   try {
-    console.log('Starting getDashboardStats');
-
-    const [userStats, bookingStats, revenueStats] = await Promise.all([
-      User.aggregate([
-        {
-          $group: {
-            _id: '$role',
-            count: { $sum: 1 },
-            active: { 
-              $sum: { 
-                $cond: [
-                  { $eq: [{ $ifNull: ['$isActive', false] }, true] }, 
-                  1, 
-                  0
-                ] 
-              } 
-            }
-          }
-        }
-      ]).exec(),
-      Booking.aggregate([
-        {
-          $group: {
-            _id: { $ifNull: ['$status', 'pending'] },
-            count: { $sum: 1 },
-            revenue: { 
-              $sum: { 
-                $ifNull: ['$totalAmount', 0] 
-              } 
-            }
-          }
-        }
-      ]).exec(),
+    // Get counts from different collections
+    const [
+      totalUsers,
+      totalCoaches,
+      pendingCoaches,
+      totalBookings,
+      pendingReviews,
+      totalRevenue
+    ] = await Promise.all([
+      User.countDocuments(),
+      Coach.countDocuments({ isApproved: true }),
+      Coach.countDocuments({ isApproved: false, status: 'pending' }),
+      Booking.countDocuments(),
+      Review.countDocuments({ status: 'pending' }),
       Payment.aggregate([
         {
           $group: {
             _id: null,
-            totalRevenue: { 
-              $sum: { 
-                $ifNull: ['$amount', 0] 
-              } 
-            },
-            platformFees: { 
-              $sum: { 
-                $ifNull: ['$platformFee', 0] 
-              } 
-            }
+            total: { $sum: '$amount' }
           }
         }
-      ]).exec()
+      ])
     ]);
 
-    console.log('Stats retrieved:', { userStats, bookingStats, revenueStats });
+    // Calculate recent stats
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    // Format the response data
-    const formattedStats = {
-      users: {
-        total: userStats.reduce((acc, stat) => acc + stat.count, 0),
-        byRole: userStats.reduce((acc, stat) => {
-          acc[stat._id || 'unknown'] = {
-            count: stat.count,
-            active: stat.active
-          };
-          return acc;
-        }, {})
-      },
-      bookings: {
-        total: bookingStats.reduce((acc, stat) => acc + stat.count, 0),
-        totalRevenue: bookingStats.reduce((acc, stat) => acc + (stat.revenue || 0), 0),
-        byStatus: bookingStats.reduce((acc, stat) => {
-          acc[stat._id] = {
-            count: stat.count,
-            revenue: stat.revenue || 0
-          };
-          return acc;
-        }, {})
-      },
-      revenue: {
-        total: revenueStats[0]?.totalRevenue || 0,
-        platformFees: revenueStats[0]?.platformFees || 0,
-        netRevenue: (revenueStats[0]?.totalRevenue || 0) - (revenueStats[0]?.platformFees || 0)
+    const [
+      newUsers,
+      newBookings,
+      recentRevenue
+    ] = await Promise.all([
+      User.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
+      Booking.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
+      Payment.aggregate([
+        {
+          $match: { createdAt: { $gte: thirtyDaysAgo } }
+        },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: '$amount' }
+          }
+        }
+      ])
+    ]);
+
+    res.json(formatResponse('success', 'Dashboard stats retrieved successfully', {
+      stats: {
+        totalUsers,
+        totalCoaches,
+        pendingCoaches,
+        totalBookings,
+        pendingReviews,
+        totalRevenue: totalRevenue[0]?.total || 0,
+        newUsers,
+        newBookings,
+        recentRevenue: recentRevenue[0]?.total || 0
       }
-    };
-
-    console.log('Formatted stats:', formattedStats);
-    const response = formatResponse('success', 'Dashboard statistics retrieved successfully', formattedStats);
-    res.status(200).json(response);
+    }));
   } catch (error) {
-    console.error('Dashboard Stats Error:', error);
-    throw new AppError('Error fetching dashboard statistics: ' + error.message, 500);
+    console.error('Dashboard stats error:', error);
+    res.status(500).json(formatResponse('error', 'Error fetching dashboard stats'));
   }
-});
+};
 
 // Reports
 exports.getUserStats = catchAsync(async (req, res) => {

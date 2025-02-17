@@ -150,7 +150,7 @@ export const adminService = {
   rejectCoach: (coachId, data) => api.post(`/admin/coaches/${coachId}/reject`, data),
   
   // Dashboard
-  getDashboardStats: () => api.get('/admin/dashboard'),
+  getDashboardStats: () => api.get('/admin/dashboard/stats'),
   
   // Booking management
   getAllBookings: () => api.get('/admin/bookings'),
@@ -161,6 +161,10 @@ export const adminService = {
   getBookingStats: () => api.get('/admin/reports/bookings'),
   getRevenueStats: () => api.get('/admin/reports/revenue'),
   getCoachPerformance: () => api.get('/admin/reports/coach-performance'),
+  
+  // Review Moderation
+  getPendingReviews: () => api.get('/admin/reviews/pending'),
+  moderateReview: (reviewId, data) => api.put(`/admin/reviews/${reviewId}/moderate`, data),
 };
 
 export default api;

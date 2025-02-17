@@ -35,10 +35,14 @@ const AdminDashboard = () => {
 
   const fetchDashboardStats = async () => {
     try {
+      setLoading(true);
       const response = await adminService.getDashboardStats();
-      setStats(response.data);
-    } catch (error) {
-      setError(error.response?.data?.message || 'Error fetching dashboard stats');
+      if (response?.data?.data?.stats) {
+        setStats(response.data.data.stats);
+      }
+    } catch (err) {
+      console.error('Dashboard stats error:', err);
+      setError(err.response?.data?.message || 'Error fetching dashboard stats');
     } finally {
       setLoading(false);
     }
