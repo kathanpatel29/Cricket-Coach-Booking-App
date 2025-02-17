@@ -5,12 +5,10 @@ const { protect, authorize } = require('../middleware/authMiddleware');
 
 // Public routes
 router.get('/', coachController.getAllCoaches);
-router.get('/:id', coachController.getCoachById);
 router.get('/:id/public', coachController.getCoachPublicProfile);
 
 // Protected coach routes
-router.use(protect);
-router.use(authorize('coach'));
+router.use(protect, authorize('coach'));
 
 // Dashboard
 router.get('/dashboard/stats', coachController.getDashboardStats);
@@ -24,21 +22,12 @@ router.get('/schedule', coachController.getSchedule);
 router.put('/schedule', coachController.updateSchedule);
 
 // Availability
-router.get('/availability', coachController.getAvailability);
-router.put('/availability', coachController.updateAvailability);
+router.post('/availability', protect, authorize('coach'), coachController.addAvailability);
+router.get('/availability', protect, authorize('coach'), coachController.getAvailability);
+router.delete('/availability/:id', protect, authorize('coach'), coachController.deleteAvailability);
 
 // Emergency off
 router.get('/emergency-off', coachController.getEmergencyOff);
 router.post('/emergency-off', coachController.setEmergencyOff);
-router.delete('/emergency-off/:date', coachController.removeEmergencyOff);
 
-// Bookings
-router.get('/bookings', coachController.getBookings);
-router.put('/bookings/:id/status', coachController.updateBookingStatus);
-
-// Stats
-router.get('/stats', coachController.getCoachStats);
-router.get('/earnings', coachController.getCoachEarnings);
-router.get('/reviews', coachController.getCoachReviews);
-
-module.exports = router;
+module.exports = router;// Add these routes to your existing coachRoutes.js

@@ -16,6 +16,8 @@ import {
   OutlinedInput
 } from '@mui/material';
 import { useAuth } from '../../contexts/AuthContext';
+import { authService } from '../../services/api';
+import { toast } from 'react-hot-toast';
 
 const SPECIALIZATIONS = ['batting', 'bowling', 'fielding', 'wicket-keeping'];
 
@@ -60,76 +62,16 @@ const Register = () => {
     setError('');
 
     try {
-      // Validate admin registration
-      if (formData.role === 'admin') {
-        if (!formData.adminSecretKey) {
-          setError('Admin secret key is required');
-          setLoading(false);
-          return;
-        }
-
-        // Only send necessary admin data
-        const adminData = {
-          name: formData.name,
-          email: formData.email,
-          password: formData.password,
-          role: 'admin',
-          adminSecretKey: formData.adminSecretKey
-        };
-
-        const response = await register(adminData);
-        if (response.data.status === 'success') {
-          navigate('/admin-dashboard');
-          return;
-        }
+      const response = await authService.register(formData);
+      
+      if (response.data.status === 'success') {
+        toast.success('Registration successful! Please login.');
+        navigate('/login');
       }
-
-      // Handle coach registration
-      if (formData.role === 'coach') {
-        if (formData.specializations.length === 0) {
-          setError('Please select at least one specialization');
-          setLoading(false);
-          return;
-        }
-
-        if (formData.bio.length < 10) {
-          setError('Bio must be at least 10 characters long');
-          setLoading(false);
-          return;
-        }
-
-        const coachData = {
-          ...formData,
-          experience: Number(formData.experience),
-          hourlyRate: Number(formData.hourlyRate)
-        };
-
-        const response = await register(coachData);
-        if (response.data.status === 'success') {
-          navigate('/coach-dashboard');
-          return;
-        }
-      }
-
-      // Handle client registration
-      if (formData.role === 'client') {
-        const clientData = {
-          name: formData.name,
-          email: formData.email,
-          password: formData.password,
-          role: 'client'
-        };
-
-        const response = await register(clientData);
-        if (response.data.status === 'success') {
-          navigate('/client-dashboard');
-          return;
-        }
-      }
-
     } catch (err) {
       console.error('Registration error:', err);
-      setError(err.response?.data?.message || 'Registration failed. Please try again.');
+      setError(err.response?.data?.message || 'Registration failed');
+      toast.error(err.response?.data?.message || 'Registration failed');
     } finally {
       setLoading(false);
     }

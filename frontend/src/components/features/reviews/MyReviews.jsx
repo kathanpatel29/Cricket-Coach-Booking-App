@@ -1,32 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import {
+  Box,
   Paper,
   Typography,
-  Box,
-  Alert,
-  CircularProgress,
   Grid,
-  Card,
-  CardContent,
   Rating,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField
+  Alert,
+  CircularProgress
 } from '@mui/material';
-import { format } from 'date-fns';
 import { clientService } from '../../../services/api';
 
 const MyReviews = () => {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [openDialog, setOpenDialog] = useState(false);
-  const [selectedReview, setSelectedReview] = useState(null);
-  const [editedRating, setEditedRating] = useState(0);
-  const [editedComment, setEditedComment] = useState('');
 
   useEffect(() => {
     fetchReviews();
@@ -35,8 +22,14 @@ const MyReviews = () => {
   const fetchReviews = async () => {
     try {
       setLoading(true);
-      const response = await clientService.getMyReviews();
-      setReviews(response.data.data.reviews);
+      const response = await clientService.getBookings();
+      if (response?.data?.data?.bookings) {
+        // Filter bookings with reviews
+        const reviewedBookings = response.data.data.bookings.filter(
+          booking => booking.review
+        );
+        setReviews(reviewedBookings.map(booking => booking.review));
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Error fetching reviews');
     } finally {
@@ -44,103 +37,35 @@ const MyReviews = () => {
     }
   };
 
-  const handleEditClick = (review) => {
-    setSelectedReview(review);
-    setEditedRating(review.rating);
-    setEditedComment(review.comment);
-    setOpenDialog(true);
-  };
-
-  const handleUpdateReview = async () => {
-    try {
-      await clientService.updateReview(selectedReview._id, {
-        rating: editedRating,
-        comment: editedComment
-      });
-      fetchReviews();
-      setOpenDialog(false);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Error updating review');
-    }
-  };
-
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" p={3}>
-        <CircularProgress />
-      </Box>
-    );
-  }
+  if (loading) return <CircularProgress />;
 
   return (
-    <>
-      <Paper sx={{ p: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          My Reviews
-        </Typography>
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h6" gutterBottom>
+        My Reviews
+      </Typography>
 
-        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-        <Grid container spacing={3}>
-          {reviews.map((review) => (
-            <Grid item xs={12} md={6} key={review._id}>
-              <Card>
-                <CardContent>
-                  <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                    <Typography variant="subtitle1">
-                      Coach: {review.coach.name}
-                    </Typography>
-                    <Typography variant="caption" color="textSecondary">
-                      {format(new Date(review.createdAt), 'MMM dd, yyyy')}
-                    </Typography>
-                  </Box>
-                  <Rating value={review.rating} readOnly />
-                  <Typography variant="body1" mt={1}>
-                    {review.comment}
-                  </Typography>
-                  <Box mt={2}>
-                    <Button
-                      size="small"
-                      color="primary"
-                      onClick={() => handleEditClick(review)}
-                    >
-                      Edit Review
-                    </Button>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
-      </Paper>
-
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
-        <DialogTitle>Edit Review</DialogTitle>
-        <DialogContent>
-          <Box sx={{ pt: 2 }}>
-            <Rating
-              value={editedRating}
-              onChange={(event, newValue) => setEditedRating(newValue)}
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              fullWidth
-              multiline
-              rows={4}
-              label="Review Comment"
-              value={editedComment}
-              onChange={(e) => setEditedComment(e.target.value)}
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
-          <Button onClick={handleUpdateReview} variant="contained">
-            Update
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </>
+      <Grid container spacing={3}>
+        {reviews.map((review) => (
+          <Grid item xs={12} sm={6} md={4} key={review._id}>
+            <Paper sx={{ p: 2 }}>
+              <Typography variant="subtitle1">
+                Coach: {review.coach?.name}
+              </Typography>
+              <Rating value={review.rating} readOnly />
+              <Typography variant="body2" sx={{ mt: 1 }}>
+                {review.comment}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {new Date(review.createdAt).toLocaleDateString()}
+              </Typography>
+            </Paper>
+          </Grid>
+        ))}
+      </Grid>
+    </Box>
   );
 };
 

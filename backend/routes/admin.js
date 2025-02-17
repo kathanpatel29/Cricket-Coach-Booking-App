@@ -41,9 +41,4 @@ router.get('/export/users', adminController.exportUsers);
 router.get('/export/bookings', adminController.exportBookings);
 router.get('/export/revenue', adminController.exportRevenue);
 
-// Coach approval routes (admin only)
-router.get('/pending-coaches', protect, authorize('admin'), adminController.getPendingCoaches);
-router.post('/coaches/:id/approve', protect, authorize('admin'), adminController.approveCoach);
-router.post('/coaches/:id/reject', protect, authorize('admin'), adminController.rejectCoach);
-
 module.exports = router;

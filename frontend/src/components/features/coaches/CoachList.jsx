@@ -22,7 +22,7 @@ import {
 } from '@mui/material';
 import { coachService } from '../../../services/api';
 import { useAuth } from '../../../contexts/AuthContext';
-import LoadingSpinner from '../../common/LoadingSpinner';
+import Loading from '../../common/Loading';
 
 const CoachList = () => {
   const navigate = useNavigate();
@@ -30,12 +30,6 @@ const CoachList = () => {
   const [coaches, setCoaches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [filters, setFilters] = useState({
-    specialization: '',
-    experience: '',
-    rating: '',
-    search: ''
-  });
 
   useEffect(() => {
     fetchCoaches();
@@ -58,10 +52,10 @@ const CoachList = () => {
 
   const handleFilterChange = (event) => {
     const { name, value } = event.target;
-    setFilters(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    // setFilters(prev => ({
+    //   ...prev,
+    //   [name]: value
+    // }));
   };
 
   const handleViewProfile = (coachId) => {
@@ -77,7 +71,7 @@ const CoachList = () => {
   };
 
   if (loading) {
-    return <LoadingSpinner />;
+    return <Loading />;
   }
 
   if (error) {

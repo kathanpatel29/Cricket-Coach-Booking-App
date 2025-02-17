@@ -18,7 +18,7 @@ import {
   Alert,
   Card,
   CardContent
-} from '../../shared/MuiComponents.jsx';
+} from '@mui/material';
 import {
   CricketIcon,
   StarIcon,
@@ -30,9 +30,10 @@ import {
 import { useParams, useNavigate } from 'react-router-dom';
 import { coachService } from '../../../services/api';
 import { useAuth } from '../../../contexts/AuthContext';
-import LoadingSpinner from '../../common/LoadingSpinner';
+import Loading from '../../common/Loading';
 import { formatDate } from '../../../utils/helpers';
 import axios from 'axios';
+import BookingForm from '../bookings/BookingForm';
 
 const CoachProfile = () => {
   const [coach, setCoach] = useState(null);
@@ -44,6 +45,8 @@ const CoachProfile = () => {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [availableSlots, setAvailableSlots] = useState([]);
   const [selectedSlot, setSelectedSlot] = useState(null);
+  const [showBookingForm, setShowBookingForm] = useState(false);
+  const [bookingSuccess, setBookingSuccess] = useState(false);
 
   useEffect(() => {
     fetchCoachProfile();
@@ -90,6 +93,12 @@ const CoachProfile = () => {
     }
   };
 
+  const handleBookingSuccess = () => {
+    setBookingSuccess(true);
+    setShowBookingForm(false);
+    fetchAvailableSlots();
+  };
+
   const handleBookSession = () => {
     if (!user) {
       navigate('/login', { state: { from: `/coaches/${id}` } });
@@ -101,17 +110,10 @@ const CoachProfile = () => {
       return;
     }
 
-    navigate('/book', { 
-      state: { 
-        coachId: id,
-        date: selectedDate,
-        time: selectedSlot,
-        coachName: `${coach.firstName} ${coach.lastName}`
-      } 
-    });
+    setShowBookingForm(true);
   };
 
-  if (loading) return <LoadingSpinner />;
+  if (loading) return <Loading />;
 
   if (error) {
     return (
@@ -239,6 +241,24 @@ const CoachProfile = () => {
             </List>
           </CardContent>
         </Card>
+      )}
+
+      {showBookingForm && (
+        <Box sx={{ mt: 3 }}>
+          <BookingForm
+            coachId={id}
+            selectedDate={selectedDate}
+            selectedSlot={selectedSlot}
+            amount={coach.hourlyRate}
+            onSuccess={handleBookingSuccess}
+          />
+        </Box>
+      )}
+
+      {bookingSuccess && (
+        <Alert severity="success" sx={{ mt: 2 }}>
+          Booking confirmed successfully!
+        </Alert>
       )}
     </Box>
   );

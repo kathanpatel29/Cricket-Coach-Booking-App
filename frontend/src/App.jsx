@@ -1,10 +1,11 @@
 import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
-import { publicRoutes, clientRoutes, coachRoutes, adminRoutes, sharedProtectedRoutes } from './routes';
+import { publicRoutes, clientRoutes, coachRoutes, adminRoutes, defaultRoutes } from './routes';
+import ErrorBoundary from './components/common/ErrorBoundary';
 
 function App() {
   return (
@@ -14,65 +15,30 @@ function App() {
         <main className="flex-grow">
           <Routes>
             {/* Public Routes */}
-            {publicRoutes.map(route => (
-              <Route 
-                key={route.path} 
-                path={route.path} 
-                element={route.element} 
-              />
+            {publicRoutes.map(({ path, element }) => (
+              <Route key={path} path={path} element={element} />
             ))}
 
-            {/* Protected Client Routes */}
-            {clientRoutes.map(route => (
+            {/* Default Dashboard Route */}
+            {defaultRoutes.map(({ path, element }) => (
+              <Route key={path} path={path} element={element} />
+            ))}
+
+            {/* Protected Routes */}
+            {[...clientRoutes, ...coachRoutes, ...adminRoutes].map(({ path, element, roles }) => (
               <Route
-                key={route.path}
-                path={route.path}
+                key={path}
+                path={path}
                 element={
-                  <ProtectedRoute roles={route.roles}>
-                    {route.element}
+                  <ProtectedRoute roles={roles}>
+                    {element}
                   </ProtectedRoute>
                 }
               />
             ))}
 
-            {/* Protected Coach Routes */}
-            {coachRoutes.map(route => (
-              <Route
-                key={route.path}
-                path={route.path}
-                element={
-                  <ProtectedRoute roles={route.roles}>
-                    {route.element}
-                  </ProtectedRoute>
-                }
-              />
-            ))}
-
-            {/* Protected Admin Routes */}
-            {adminRoutes.map(route => (
-              <Route
-                key={route.path}
-                path={route.path}
-                element={
-                  <ProtectedRoute roles={route.roles}>
-                    {route.element}
-                  </ProtectedRoute>
-                }
-              />
-            ))}
-
-            {/* Shared Protected Routes */}
-            {sharedProtectedRoutes.map(route => (
-              <Route
-                key={route.path}
-                path={route.path}
-                element={
-                  <ProtectedRoute roles={route.roles}>
-                    {route.element}
-                  </ProtectedRoute>
-                }
-              />
-            ))}
+            {/* Catch-all route */}
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
         <Footer />

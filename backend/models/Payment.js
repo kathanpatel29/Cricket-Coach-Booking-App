@@ -6,22 +6,13 @@ const paymentSchema = new mongoose.Schema({
     ref: 'Booking',
     required: true
   },
-  client: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
-  coach: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
   amount: {
     type: Number,
     required: true
   },
   currency: {
     type: String,
+    required: true,
     default: 'usd'
   },
   status: {
@@ -29,28 +20,19 @@ const paymentSchema = new mongoose.Schema({
     enum: ['pending', 'succeeded', 'failed', 'refunded'],
     default: 'pending'
   },
-  paymentIntentId: {
+  stripePaymentIntentId: {
     type: String,
-    required: true,
-    unique: true
-  },
-  platformFee: {
-    type: Number,
     required: true
   },
-  coachPayout: {
-    type: Number,
+  stripeClientSecret: {
+    type: String,
     required: true
   },
-  refundReason: {
-    type: String
-  },
-  refundedAt: {
-    type: Date
-  },
-  metadata: {
-    type: Map,
-    of: String
+  refundDetails: {
+    amount: Number,
+    reason: String,
+    date: Date,
+    stripeRefundId: String
   }
 }, {
   timestamps: true
@@ -58,9 +40,8 @@ const paymentSchema = new mongoose.Schema({
 
 // Indexes for better query performance
 paymentSchema.index({ booking: 1 });
-paymentSchema.index({ client: 1 });
-paymentSchema.index({ coach: 1 });
 paymentSchema.index({ status: 1 });
+paymentSchema.index({ stripePaymentIntentId: 1 });
 
 const Payment = mongoose.model('Payment', paymentSchema);
 

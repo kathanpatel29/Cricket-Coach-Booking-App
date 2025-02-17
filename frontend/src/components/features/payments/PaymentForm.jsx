@@ -17,8 +17,7 @@ import {
 } from '@stripe/react-stripe-js';
 import { paymentService } from '../../../services/api';
 
-// Make sure VITE_STRIPE_PUBLIC_KEY is defined in your .env file
-const STRIPE_PUBLIC_KEY = import.meta.env.VITE_STRIPE_PUBLIC_KEY;
+const STRIPE_PUBLIC_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
 
 if (!STRIPE_PUBLIC_KEY) {
   throw new Error('Stripe public key is not defined in environment variables');

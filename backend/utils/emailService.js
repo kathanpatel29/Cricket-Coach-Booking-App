@@ -28,13 +28,8 @@ const sendBookingConfirmation = async (userEmail, bookingDetails) => {
     `
   };
 
-  try {
-    await transporter.sendMail(mailOptions);
-    return true;
-  } catch (error) {
-    console.error('Email sending failed:', error);
-    return false;
-  }
+  await transporter.sendMail(mailOptions);
+  return true;
 };
 
 const sendCoachNotification = async (coachEmail, bookingDetails) => {

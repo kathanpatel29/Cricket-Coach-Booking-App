@@ -1,8 +1,11 @@
-import { useState, useContext, useEffect } from "react"; // Add useEffect here
+import React, { useState, useContext, useEffect } from "react"; // Add useEffect here
 import { useNavigate, useLocation } from "react-router-dom";
 import { AuthContext } from "../../contexts/AuthContext";
 import Alert from "../../components/common/Alert";
 import { authService } from "../../services/api.js";
+import { Box, Button, TextField, Typography } from '@mui/material';
+import { useAuth } from '../../contexts/AuthContext';
+import { toast } from 'react-hot-toast';
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -12,7 +15,7 @@ const Login = () => {
   });
   const [showAdminKey, setShowAdminKey] = useState(false);
   const [error, setError] = useState("");
-  const { login } = useContext(AuthContext);
+  const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [emailError, setEmailError] = useState("");
@@ -80,28 +83,28 @@ const Login = () => {
         }
       }
 
-      const response = await login({
-        email: formData.email,
-        password: formData.password,
-        ...(showAdminKey && { adminSecretKey: formData.adminSecretKey })
-      });
+      const response = await login(formData);
 
       if (response.data.status === 'success') {
         const { role } = response.data.data.user;
         
+        // Redirect based on user role
         switch (role) {
           case 'admin':
-            navigate('/admin-dashboard');
+            navigate('/dashboard');
             break;
           case 'coach':
-            navigate('/coach-dashboard');
+            navigate('/coach/dashboard');
             break;
           default:
             navigate('/dashboard');
         }
+        
+        toast.success('Login successful!');
       }
-    } catch (error) {
-      setError(error.response?.data?.message || 'Login failed');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Login failed');
+      toast.error(err.response?.data?.message || 'Login failed');
     }
   };
 

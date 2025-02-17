@@ -35,16 +35,7 @@ const userSchema = new mongoose.Schema({
   },
   isApproved: {
     type: Boolean,
-    default: function() {
-      return this.role !== 'coach'; // Only coaches need approval
-    }
-  },
-  approvalStatus: {
-    type: String,
-    enum: ['pending', 'approved', 'rejected'],
-    default: function() {
-      return this.role === 'coach' ? 'pending' : 'approved';
-    }
+    default: true
   },
   approvalDate: Date,
   approvedBy: {
@@ -53,10 +44,7 @@ const userSchema = new mongoose.Schema({
   },
   rejectionReason: String,
   passwordChangedAt: Date,
-  passwordResetToken: String,
-  passwordResetExpires: Date,
   lastLogin: Date,
-  statusUpdateReason: String,
   statusUpdatedAt: Date,
   statusUpdatedBy: {
     type: mongoose.Schema.Types.ObjectId,
@@ -82,12 +70,8 @@ userSchema.pre('save', async function(next) {
 });
 
 // Compare password method
-userSchema.methods.comparePassword = async function(candidatePassword) {
-  try {
-    return await bcrypt.compare(candidatePassword, this.password);
-  } catch (error) {
-    throw new Error('Error comparing passwords');
-  }
+userSchema.methods.comparePassword = function(candidatePassword) {
+  return bcrypt.compare(candidatePassword, this.password);
 };
 
 //Prevent Mongoose from recompiling the model

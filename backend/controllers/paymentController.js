@@ -10,89 +10,50 @@ const mongoose = require('mongoose');
 exports.createPaymentIntent = catchAsync(async (req, res) => {
   const { bookingId } = req.params;
   
-  // Find and validate booking
   const booking = await Booking.findById(bookingId)
-    .populate('coach')
-    .populate('client');
+    .populate('coach');
     
   if (!booking) {
     throw new AppError("Booking not found", 404);
   }
-  
-  if (booking.client.toString() !== req.user.id) {
-    throw new AppError("Unauthorized access to booking", 403);
-  }
-  
-  if (booking.paymentStatus === 'paid') {
-    throw new AppError("Booking is already paid", 400);
-  }
 
-  // Create payment intent
   const paymentIntent = await stripe.paymentIntents.create({
     amount: Math.round(booking.totalAmount * 100), // Convert to cents
     currency: "usd",
     metadata: { 
       bookingId: booking._id.toString(),
       coachId: booking.coach._id.toString(),
-      clientId: booking.client.toString(),
-      userId: req.user._id.toString()
-    },
-    application_fee_amount: Math.round(booking.totalAmount * 10), // 10% platform fee
-    transfer_data: {
-      destination: booking.coach.stripeAccountId, // Assuming coach has connected Stripe account
-    },
+      clientId: booking.client.toString()
+    }
   });
 
-  // Update booking with payment intent
   booking.paymentIntentId = paymentIntent.id;
   await booking.save();
 
-  successResponse(res, 200, {
-    clientSecret: paymentIntent.client_secret,
-    bookingDetails: {
-      amount: booking.totalAmount,
-      coach: booking.coach.name,
-      date: booking.date,
-      timeSlot: booking.timeSlot
+  res.json({
+    status: 'success',
+    data: {
+      clientSecret: paymentIntent.client_secret
     }
   });
 });
 
 exports.confirmPayment = catchAsync(async (req, res) => {
   const { bookingId } = req.params;
-  const { paymentIntentId } = req.body;
-
-  const booking = await Booking.findById(bookingId)
-    .populate('coach')
-    .populate('client');
-    
+  
+  const booking = await Booking.findById(bookingId);
   if (!booking) {
     throw new AppError("Booking not found", 404);
   }
 
-  // Verify payment intent
-  const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-  if (paymentIntent.metadata.bookingId !== bookingId) {
-    throw new AppError("Payment intent does not match booking", 400);
-  }
-
-  // Update booking status
+  booking.status = 'confirmed';
   booking.paymentStatus = 'paid';
   await booking.save();
 
-  // Create payment record
-  await Payment.create({
-    booking: bookingId,
-    client: req.user._id,
-    coach: booking.coach._id,
-    amount: booking.totalAmount,
-    paymentIntentId,
-    status: 'succeeded',
-    platformFee: Math.round(booking.totalAmount * 0.1), // 10% platform fee
-    coachPayout: Math.round(booking.totalAmount * 0.9) // 90% coach payout
+  res.json({
+    status: 'success',
+    data: { booking }
   });
-
-  res.status(200).json(formatResponse('success', 'Payment confirmed successfully'));
 });
 
 exports.getPaymentHistory = catchAsync(async (req, res) => {

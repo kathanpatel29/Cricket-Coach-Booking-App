@@ -13,8 +13,8 @@ router.get("/:id", reviewController.getReviewById);
 router.use(protect);
 
 // Client routes
-router.post("/", authorize("client"), reviewController.createReview);
-router.put("/:id", authorize("client"), reviewController.updateReview);
+router.post("/", reviewController.createReview);
+router.put("/:id", reviewController.updateReview);
 router.delete("/:id", authorize("client", "admin"), reviewController.deleteReview);
 
 // Admin routes

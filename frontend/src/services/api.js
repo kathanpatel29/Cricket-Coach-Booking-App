@@ -1,31 +1,22 @@
 import axios from 'axios';
 import { toast } from 'react-toastify';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-
-// Create axios instance with default config
+// Create axios instance with base URL and default headers
 const api = axios.create({
-  baseURL: API_URL,
-  withCredentials: true,
+  baseURL: '/api',
   headers: {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json'
+    'Content-Type': 'application/json'
   }
 });
 
-// Add auth token to requests if available
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
+// Add auth token to requests
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
-);
+  return config;
+});
 
 // Handle response errors
 api.interceptors.response.use(
@@ -46,9 +37,27 @@ api.interceptors.response.use(
 
 // Auth Service
 export const authService = {
-  login: (loginData) => api.post('/auth/login', loginData),
-  register: (userData) => api.post('/auth/register', userData),
+  login: (data) => api.post('/auth/login', data),
+  register: (data) => api.post('/auth/register', data),
   logout: () => api.post('/auth/logout'),
+  forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
+  resetPassword: (token, password) => api.post(`/auth/reset-password/${token}`, { password }),
+  verifyEmail: (token) => api.get(`/auth/verify-email/${token}`),
+  refreshToken: () => api.post('/auth/refresh-token'),
+  
+  // Get dashboard route based on user role
+  getDashboardRoute: (role) => {
+    switch (role) {
+      case 'admin':
+        return '/admin/dashboard';
+      case 'coach':
+        return '/coach/dashboard';
+      case 'client':
+        return '/client/dashboard';
+      default:
+        return '/';
+    }
+  },
   getProfile: () => api.get('/auth/me'),
   updateProfile: (data) => api.put('/auth/profile', data),
   checkEmail: (email) => api.post('/auth/check-email', { email }),
@@ -70,11 +79,11 @@ export const userService = {
 // Coach Service
 export const coachService = {
   // Dashboard
-  getDashboardStats: () => api.get('/coaches/dashboard/stats'),
+  getDashboardStats: () => api.get('/coach/dashboard/stats'),
   
   // Profile
-  getProfile: () => api.get('/coaches/profile'),
-  updateProfile: (data) => api.put('/coaches/profile', data),
+  getProfile: () => api.get('/coach/profile'),
+  updateProfile: (data) => api.put('/coach/profile', data),
   
   // Schedule
   getSchedule: () => api.get('/coaches/schedule'),
@@ -96,15 +105,35 @@ export const coachService = {
   
   // Stats
   getStats: () => api.get('/coaches/stats'),
-  getEarnings: () => api.get('/coaches/earnings'),
+  getEarnings: () => api.get('/coach/earnings'),
   getReviews: () => api.get('/coaches/reviews'),
+
+  // Sessions
+  getSessions: () => api.get('/coach/sessions'),
+  updateSession: (sessionId, data) => api.put(`/coaches/sessions/${sessionId}`, data),
+
+  // Availability
+  getAvailability: () => api.get('/coach/availability'),
+  addAvailability: (data) => api.post('/coach/availability', data),
+  deleteAvailability: (id) => api.delete(`/coach/availability/${id}`),
+  
+  // Client View
+  getAllAvailability: () => api.get('/availability'),
+  getCoachAvailability: (coachId) => api.get(`/coaches/${coachId}/availability`),
+
+  // Client Availability View
+  getAvailableCoaches: () => api.get('/coaches/available'),
+  getCoachAvailability: (coachId) => api.get(`/coaches/${coachId}/availability`),
 };
 
 // Client Service
 export const clientService = {
-  getProfile: () => api.get('/clients/profile'),
-  updateProfile: (data) => api.put('/clients/profile', data),
-  getBookings: () => api.get('/clients/bookings'),
+  getDashboardStats: () => api.get('/client/dashboard/stats'),
+  getBookings: () => api.get('/client/bookings'),
+  getReviews: () => api.get('/client/reviews'),
+  getPayments: () => api.get('/client/payments'),
+  getProfile: () => api.get('/client/profile'),
+  updateProfile: (data) => api.put('/client/profile', data),
   cancelBooking: (bookingId, reason) => 
     api.post(`/clients/bookings/${bookingId}/cancel`, { reason }),
   submitReview: (bookingId, data) => 
@@ -120,9 +149,10 @@ export const bookingService = {
   updateStatus: (id, status) => api.patch('/bookings/' + id + '/status', { status }),
   cancelBooking: (id) => api.post('/bookings/' + id + '/cancel'),
   reschedule: (id, data) => api.post('/bookings/' + id + '/reschedule', data),
-  confirmPayment: (id) => api.post('/bookings/' + id + '/confirm-payment'),
+  confirmPayment: (bookingId) => api.post(`/payments/confirm-payment/${bookingId}`),
   getAll: () => api.get('/bookings'),
-  getAvailableSlots: (coachId, date) => api.get('/bookings/slots/' + coachId, { params: { date } }),
+  getAvailableSlots: (coachId, date) => api.get(`/bookings/slots/${coachId}?date=${date}`),
+  createPaymentIntent: (bookingId) => api.post(`/payments/create-payment-intent/${bookingId}`),
 };
 
 // Payment Service
@@ -139,7 +169,7 @@ export const paymentService = {
 // Admin Service
 export const adminService = {
   // User Management
-  getAllUsers: () => api.get('/admin/users'),
+  getUsers: () => api.get('/admin/users'),
   updateUser: (userId, data) => api.put(`/admin/users/${userId}`, data),
   deleteUser: (userId) => api.delete(`/admin/users/${userId}`),
   searchUsers: (query) => api.get('/admin/users', { params: { search: query } }),
@@ -165,6 +195,15 @@ export const adminService = {
   // Review Moderation
   getPendingReviews: () => api.get('/admin/reviews/pending'),
   moderateReview: (reviewId, data) => api.put(`/admin/reviews/${reviewId}/moderate`, data),
+  getReviews: () => api.get('/admin/reviews'),
+  getPayments: () => api.get('/admin/payments'),
 };
 
+// Public Service
+export const publicService = {
+  getAllCoaches: () => api.get('/coaches'),
+  getCoachById: (id) => api.get(`/coaches/${id}`)
+};
+
+// Export the api instance
 export default api;

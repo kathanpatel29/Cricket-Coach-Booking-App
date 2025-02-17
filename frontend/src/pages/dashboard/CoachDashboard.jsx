@@ -18,8 +18,8 @@ import {
 } from '../../components/shared/MuiComponents';
 import { coachService } from '../../services/api';
 import SessionManagement from '../../components/features/coaches/SessionManagement';
-import Availability from '../../pages/bookings/Availability';
 import Analytics from '../../components/features/coaches/Analytics';
+import AvailabilityManagement from '../../components/features/coaches/AvailabilityManagement';
 
 const CoachDashboard = () => {
   const [activeTab, setActiveTab] = useState(0);
@@ -33,10 +33,13 @@ const CoachDashboard = () => {
 
   const fetchDashboardStats = async () => {
     try {
+      setLoading(true);
       const response = await coachService.getDashboardStats();
-      setStats(response.data);
-    } catch (error) {
-      setError(error.response?.data?.message || 'Error fetching dashboard stats');
+      if (response?.data?.data) {
+        setStats(response.data.data);
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Error fetching dashboard stats');
     } finally {
       setLoading(false);
     }
@@ -92,7 +95,7 @@ const CoachDashboard = () => {
       case 1:
         return <SessionManagement />;
       case 2:
-        return <Availability />;
+        return <AvailabilityManagement />;
       case 3:
         return <Analytics />;
       default:

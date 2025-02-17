@@ -6,6 +6,9 @@ const { AppError, catchAsync } = require("../utils/errorHandler");
 const { successResponse, errorResponse, formatResponse } = require("../utils/responseFormatter");
 const User = require('../models/User');
 const { sendBookingConfirmation, sendCoachNotification } = require('../utils/emailService');
+const TimeSlot = require('../models/TimeSlot');
+const Payment = require('../models/Payment');
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 // @desc    Create a new booking
 // @route   POST /api/bookings
@@ -13,16 +16,11 @@ const { sendBookingConfirmation, sendCoachNotification } = require('../utils/ema
 exports.createBooking = catchAsync(async (req, res) => {
   const { coachId, date, timeSlot, duration } = req.body;
 
-  // Validate coach exists and is approved
   const coach = await Coach.findById(coachId).populate('user', 'isApproved');
-  if (!coach) {
-    throw new AppError("Coach not found", 404);
-  }
-  if (!coach.user.isApproved) {
-    throw new AppError("Coach is not approved for bookings", 400);
+  if (!coach || !coach.user.isApproved) {
+    throw new AppError("Coach not found or not approved", 404);
   }
 
-  // Check coach availability
   const isAvailable = await coach.isAvailableForBooking(date, timeSlot);
   if (!isAvailable) {
     throw new AppError("Selected time slot is not available", 400);
@@ -254,3 +252,85 @@ exports.isValidStatusTransition = function(currentStatus, newStatus) {
 
   return validTransitions[currentStatus]?.includes(newStatus);
 }
+
+exports.initiateBooking = catchAsync(async (req, res) => {
+  const { timeSlotId, duration } = req.body;
+  
+  // Get time slot and verify availability
+  const timeSlot = await TimeSlot.findOne({
+    _id: timeSlotId,
+    status: 'available'
+  }).populate('coach');
+  
+  if (!timeSlot) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Time slot not available'
+    });
+  }
+  
+  // Calculate amount
+  const amount = timeSlot.coach.hourlyRate * (duration / 60);
+  
+  // Create Stripe PaymentIntent
+  const paymentIntent = await stripe.paymentIntents.create({
+    amount: amount * 100, // Convert to cents
+    currency: 'usd',
+    metadata: {
+      timeSlotId,
+      coachId: timeSlot.coach._id.toString(),
+      clientId: req.user.id
+    }
+  });
+  
+  // Create booking
+  const booking = await Booking.create({
+    client: req.user.id,
+    coach: timeSlot.coach._id,
+    timeSlot: timeSlot._id,
+    duration,
+    totalAmount: amount,
+    status: 'pending'
+  });
+  
+  // Create payment record
+  await Payment.create({
+    booking: booking._id,
+    amount,
+    stripePaymentIntentId: paymentIntent.id,
+    stripeClientSecret: paymentIntent.client_secret
+  });
+  
+  // Update time slot status
+  timeSlot.status = 'booked';
+  timeSlot.booking = booking._id;
+  await timeSlot.save();
+  
+  res.status(200).json({
+    status: 'success',
+    data: {
+      booking,
+      clientSecret: paymentIntent.client_secret
+    }
+  });
+});
+
+exports.confirmBooking = catchAsync(async (req, res) => {
+  const { bookingId } = req.params;
+  
+  const booking = await Booking.findById(bookingId);
+  if (!booking) {
+    return res.status(404).json({
+      status: 'error',
+      message: 'Booking not found'
+    });
+  }
+  
+  booking.status = 'confirmed';
+  await booking.save();
+  
+  res.status(200).json({
+    status: 'success',
+    data: booking
+  });
+});

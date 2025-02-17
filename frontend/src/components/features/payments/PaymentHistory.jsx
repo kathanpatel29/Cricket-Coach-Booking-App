@@ -122,11 +122,10 @@ const PaymentHistory = () => {
           <TableHead>
             <TableRow>
               <TableCell>Date</TableCell>
-              <TableCell>Booking ID</TableCell>
-              <TableCell>Coach</TableCell>
               <TableCell>Amount</TableCell>
               <TableCell>Status</TableCell>
-              <TableCell>Payment Method</TableCell>
+              <TableCell>Coach</TableCell>
+              <TableCell>Session Date</TableCell>
               <TableCell>Actions</TableCell>
             </TableRow>
           </TableHead>
@@ -138,10 +137,6 @@ const PaymentHistory = () => {
                   <TableCell>
                     {format(new Date(payment.createdAt), 'MMM dd, yyyy')}
                   </TableCell>
-                  <TableCell>{payment.booking._id}</TableCell>
-                  <TableCell>
-                    {payment.booking.coach.name}
-                  </TableCell>
                   <TableCell>${payment.amount.toFixed(2)}</TableCell>
                   <TableCell>
                     <Chip 
@@ -150,7 +145,10 @@ const PaymentHistory = () => {
                       size="small"
                     />
                   </TableCell>
-                  <TableCell>{payment.paymentMethod}</TableCell>
+                  <TableCell>{payment.coach?.name}</TableCell>
+                  <TableCell>
+                    {format(new Date(payment.booking?.date), 'MMM dd, yyyy')}
+                  </TableCell>
                   <TableCell>
                     {payment.status === 'succeeded' && (
                       <Button

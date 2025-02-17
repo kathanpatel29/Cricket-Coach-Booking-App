@@ -14,13 +14,8 @@ router.post("/logout", protect, authController.logout);
 router.get("/me", protect, authController.getMe);
 
 router.post('/check-email', async (req, res) => {
-  try {
-    const { email } = req.body;
-    const user = await User.findOne({ email: email.toLowerCase() });
-    res.json({ exists: !!user });
-  } catch (error) {
-    res.status(500).json({ error: 'Server error' });
-  }
+  const user = await User.findOne({ email: req.body.email.toLowerCase() });
+  res.json({ exists: !!user });
 });
 
 module.exports = router;

@@ -13,132 +13,85 @@ const signToken = (id) => {
 };
 
 exports.register = async (req, res) => {
-  try {
-    const { name, email, password, role, specializations, experience, hourlyRate, bio, adminSecretKey } = req.body;
-    
-    console.log('1. Starting registration process:', { 
-      email, 
-      role,
-      hasAdminKey: !!adminSecretKey 
-    });
-
-    // Check if user already exists
-    const userExists = await User.findOne({ email: email.toLowerCase() });
-    if (userExists) {
-      console.log('2. User already exists:', email);
-      return res.status(400).json({
-        status: 'error',
-        message: 'Email already registered. Please use a different email or login.'
-      });
-    }
-
-    // Special handling for admin registration
-    if (role === 'admin') {
-      console.log('3. Validating admin key');
-      
-      if (!process.env.ADMIN_SECRET_KEY) {
-        console.error('ADMIN_SECRET_KEY not set in environment');
-        return res.status(500).json({
-          status: 'error',
-          message: 'Server configuration error'
-        });
-      }
-
-      if (!adminSecretKey) {
-        return res.status(401).json({
-          status: 'error',
-          message: 'Admin secret key is required for admin registration'
-        });
-      }
-
-      if (adminSecretKey !== process.env.ADMIN_SECRET_KEY) {
-        return res.status(401).json({
-          status: 'error',
-          message: 'Please provide the correct admin secret key'
-        });
-      }
-    }
-
-    // Create user object
-    const userData = {
-      name,
-      email: email.toLowerCase(),
-      password,
-      role,
-      isApproved: role === 'admin' ? true : role !== 'coach',
-      isActive: true
-    };
-
-    console.log('4. Creating user with data:', {
-      ...userData,
-      password: '[HIDDEN]'
-    });
-
-    // Create user
-    const user = await User.create(userData);
-    
-    if (!user) {
-      throw new Error('Failed to create user');
-    }
-
-    console.log('5. User created successfully:', { 
-      id: user._id, 
-      role: user.role 
-    });
-
-    // Generate token
-    const token = jwt.sign(
-      { id: user._id }, 
-      process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: '30d' }
-    );
-
-    if (role === 'coach') {
-      // Create coach profile
-      const coachProfile = {
-        user: user._id,
-        specializations: specializations || [],
-        experience: Number(experience) || 0,
-        hourlyRate: Number(hourlyRate) || 0,
-        bio: bio || '',
-        status: 'pending',
-        isApproved: false
-      };
-
-      try {
-        await Coach.create(coachProfile);
-      } catch (error) {
-        // If coach profile creation fails, delete the user
-        await User.findByIdAndDelete(user._id);
-        throw new Error('Failed to create coach profile');
-      }
-    }
-
-    // Send response
-    return res.status(201).json({
-      status: 'success',
-      message: role === 'admin' ? 'Admin registration successful!' : 
-               role === 'coach' ? 'Registration successful! Your coach profile is pending approval.' :
-               'Registration successful!',
-      data: {
-        user: {
-          _id: user._id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          isApproved: user.isApproved
-        },
-        token
-      }
-    });
-
-  } catch (error) {
-    console.error('Registration error details:', error);
-    return res.status(500).json({
+  const { name, email, password, role, specializations, experience, hourlyRate, bio, adminSecretKey } = req.body;
+  
+  const userExists = await User.findOne({ email: email.toLowerCase() });
+  if (userExists) {
+    return res.status(400).json({
       status: 'error',
-      message: error.message || 'Registration failed. Please try again.'
+      message: 'Email already registered'
     });
   }
+
+  if (role === 'admin' && adminSecretKey !== process.env.ADMIN_SECRET_KEY) {
+    return res.status(401).json({
+      status: 'error',
+      message: 'Invalid admin secret key'
+    });
+  }
+
+  // Create user object
+  const userData = {
+    name,
+    email: email.toLowerCase(),
+    password,
+    role,
+    isApproved: role === 'admin' ? true : role !== 'coach',
+    isActive: true
+  };
+
+  // Create user
+  const user = await User.create(userData);
+  
+  if (!user) {
+    throw new Error('Failed to create user');
+  }
+
+  // Generate token
+  const token = jwt.sign(
+    { id: user._id }, 
+    process.env.JWT_SECRET || 'your-secret-key',
+    { expiresIn: '30d' }
+  );
+
+  if (role === 'coach') {
+    // Create coach profile
+    const coachProfile = {
+      user: user._id,
+      specializations: specializations || [],
+      experience: Number(experience) || 0,
+      hourlyRate: Number(hourlyRate) || 0,
+      bio: bio || '',
+      status: 'pending',
+      isApproved: false
+    };
+
+    try {
+      await Coach.create(coachProfile);
+    } catch (error) {
+      // If coach profile creation fails, delete the user
+      await User.findByIdAndDelete(user._id);
+      throw new Error('Failed to create coach profile');
+    }
+  }
+
+  // Send response
+  return res.status(201).json({
+    status: 'success',
+    message: role === 'admin' ? 'Admin registration successful!' : 
+             role === 'coach' ? 'Registration successful! Your coach profile is pending approval.' :
+             'Registration successful!',
+    data: {
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        isApproved: user.isApproved
+      },
+      token
+    }
+  });
 };
 
 exports.login = catchAsync(async (req, res) => {

@@ -15,15 +15,29 @@ const ProtectedRoute = ({ children, roles = [] }) => {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
+  // Redirect to role-specific dashboard if accessing /dashboard
+  if (location.pathname === '/dashboard') {
+    switch (user.role) {
+      case 'admin':
+        return <Navigate to="/admin/dashboard" replace />;
+      case 'coach':
+        return <Navigate to="/coach/dashboard" replace />;
+      case 'client':
+        return <Navigate to="/client/dashboard" replace />;
+      default:
+        return <Navigate to="/" replace />;
+    }
+  }
+
   if (roles.length > 0 && !roles.includes(user.role)) {
     // Redirect unauthorized users to their respective dashboards
     switch (user.role) {
       case 'admin':
-        return <Navigate to="/admin-dashboard" replace />;
+        return <Navigate to="/admin/dashboard" replace />;
       case 'coach':
         return <Navigate to="/coach/dashboard" replace />;
       default:
-        return <Navigate to="/dashboard" replace />;
+        return <Navigate to="/client/dashboard" replace />;
     }
   }
 

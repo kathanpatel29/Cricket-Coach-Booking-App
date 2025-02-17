@@ -18,7 +18,12 @@ import MyReviews from '../../components/features/reviews/MyReviews';
 
 const UserDashboard = () => {
   const [activeTab, setActiveTab] = useState(0);
-  const [stats, setStats] = useState({});
+  const [stats, setStats] = useState({
+    totalBookings: 0,
+    upcomingBookings: [],
+    totalSpent: 0,
+    recentReviews: []
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -28,8 +33,11 @@ const UserDashboard = () => {
 
   const fetchDashboardStats = async () => {
     try {
+      setLoading(true);
       const response = await clientService.getDashboardStats();
-      setStats(response.data.data);
+      if (response?.data?.data) {
+        setStats(response.data.data);
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Error fetching dashboard stats');
     } finally {
@@ -49,13 +57,13 @@ const UserDashboard = () => {
             <Grid item xs={12} sm={6} md={3}>
               <Paper sx={{ p: 3, textAlign: 'center' }}>
                 <Typography variant="h6" color="primary">Total Sessions</Typography>
-                <Typography variant="h4">{stats.totalSessions || 0}</Typography>
+                <Typography variant="h4">{stats.totalBookings || 0}</Typography>
               </Paper>
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
               <Paper sx={{ p: 3, textAlign: 'center' }}>
                 <Typography variant="h6" color="primary">Upcoming Sessions</Typography>
-                <Typography variant="h4">{stats.upcomingSessions || 0}</Typography>
+                <Typography variant="h4">{stats.upcomingBookings.length || 0}</Typography>
               </Paper>
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
@@ -67,7 +75,7 @@ const UserDashboard = () => {
             <Grid item xs={12} sm={6} md={3}>
               <Paper sx={{ p: 3, textAlign: 'center' }}>
                 <Typography variant="h6" color="primary">Reviews Given</Typography>
-                <Typography variant="h4">{stats.reviewsGiven || 0}</Typography>
+                <Typography variant="h4">{stats.recentReviews.length || 0}</Typography>
               </Paper>
             </Grid>
           </Grid>
@@ -85,7 +93,7 @@ const UserDashboard = () => {
 
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
+      <Box display="flex" justifyContent="center" p={3}>
         <CircularProgress />
       </Box>
     );

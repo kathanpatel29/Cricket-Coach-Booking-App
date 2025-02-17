@@ -6,6 +6,7 @@ const { formatResponse } = require('../utils/responseFormatter');
 const Booking = require("../models/Booking");
 const Review = require("../models/Review");
 const { AppError, catchAsync } = require('../utils/errorHandler');
+const Availability = require('../models/Availability');
 
 // Get valid specializations
 exports.getSpecializations = async (req, res) => {
@@ -191,86 +192,73 @@ exports.getDashboardStats = async (req, res) => {
   }
 };
 
-// Get coach's availability
-exports.getAvailability = async (req, res) => {
-  try {
-    const coach = await Coach.findOne({ user: req.user._id })
-      .select('availability');
+// Get coach availability
+exports.getAvailability = catchAsync(async (req, res) => {
+  const availability = await Availability.find({ coach: req.user.id })
+    .sort({ date: 1, startTime: 1 });
 
-    if (!coach) {
-      return res.status(404).json(formatResponse('error', 'Coach not found'));
+  res.json({
+    status: 'success',
+    data: {
+      availability
     }
+  });
+});
 
-    res.json(formatResponse('success', 'Availability retrieved successfully', {
-      availability: coach.availability || []
-    }));
-  } catch (error) {
-    res.status(500).json(formatResponse('error', 'Error fetching availability'));
+// Add new availability slot
+exports.addAvailability = catchAsync(async (req, res) => {
+  const { date, startTime, endTime } = req.body;
+
+  // Validate time format and date
+  if (!date || !startTime || !endTime) {
+    return res.status(400).json(formatResponse('error', 'Please provide date, start time and end time'));
   }
-};
 
-// Update availability
-exports.updateAvailability = async (req, res) => {
-  try {
-    const { dates, slots } = req.body;
-    
-    if (!Array.isArray(dates) || !Array.isArray(slots)) {
-      return res.status(400).json(formatResponse('error', 'Invalid input format'));
-    }
+  // Check if slot already exists
+  const existingSlot = await Availability.findOne({
+    coach: req.user.id,
+    date,
+    startTime,
+    endTime
+  });
 
-    const availability = dates.map(date => ({
-      date: new Date(date),
-      slots: slots.map(slot => ({
-        startTime: slot.startTime,
-        endTime: slot.endTime,
-        isBooked: false
-      }))
-    }));
-
-    const coach = await Coach.findOneAndUpdate(
-      { user: req.user._id },
-      { 
-        $set: { availability },
-        hasSetAvailability: true
-      },
-      { new: true }
-    );
-
-    if (!coach) {
-      return res.status(404).json(formatResponse('error', 'Coach not found'));
-    }
-
-    res.json(formatResponse('success', 'Availability updated successfully', {
-      availability: coach.availability
-    }));
-  } catch (error) {
-    res.status(500).json(formatResponse('error', 'Error updating availability'));
+  if (existingSlot) {
+    return res.status(400).json(formatResponse('error', 'This time slot already exists'));
   }
-};
 
-// Delete availability for a specific date
-exports.deleteAvailability = async (req, res) => {
-  try {
-    const { date } = req.params;
-    
-    const coach = await Coach.findOne({ user: req.user.id });
-    if (!coach) {
-      return res.status(404).json(formatResponse('error', "Coach profile not found"));
+  const availability = await Availability.create({
+    coach: req.user.id,
+    date,
+    startTime,
+    endTime
+  });
+
+  res.status(201).json({
+    status: 'success',
+    data: {
+      availability
     }
+  });
+});
 
-    // Remove availability for the specified date
-    const dateString = new Date(date).toISOString().split('T')[0];
-    coach.availability = coach.availability.filter(a => 
-      a.date.toISOString().split('T')[0] !== dateString
-    );
+// Delete availability slot
+exports.deleteAvailability = catchAsync(async (req, res) => {
+  const availability = await Availability.findOne({
+    _id: req.params.id,
+    coach: req.user.id
+  });
 
-    await coach.save();
-    res.json(formatResponse('success', "Availability deleted successfully"));
-  } catch (error) {
-    console.error('Delete availability error:', error);
-    res.status(500).json(formatResponse('error', error.message));
+  if (!availability) {
+    return res.status(404).json(formatResponse('error', 'Availability slot not found'));
   }
-};
+
+  await availability.deleteOne();
+
+  res.json({
+    status: 'success',
+    message: 'Availability slot deleted successfully'
+  });
+});
 
 exports.approveCoach = async (req, res) => {
   try {

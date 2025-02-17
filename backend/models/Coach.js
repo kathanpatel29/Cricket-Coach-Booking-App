@@ -175,14 +175,18 @@ const coachSchema = new mongoose.Schema({
     default: false
   },
   rating: {
-    type: Number,
-    default: 0,
-    min: 0,
-    max: 5
+    average: {
+      type: Number,
+      default: 0
+    },
+    count: {
+      type: Number,
+      default: 0
+    }
   },
   status: {
     type: String,
-    enum: ['pending', 'approved', 'rejected'],
+    enum: ['active', 'inactive', 'pending'],
     default: 'pending'
   },
   isAvailable: {
@@ -190,6 +194,14 @@ const coachSchema = new mongoose.Schema({
     default: true
   },
   isApproved: {
+    type: Boolean,
+    default: false
+  },
+  stripeAccountId: {
+    type: String,
+    sparse: true
+  },
+  isStripeEnabled: {
     type: Boolean,
     default: false
   }
@@ -202,7 +214,7 @@ const coachSchema = new mongoose.Schema({
 // Calculate average rating before saving
 coachSchema.pre('save', function(next) {
   if (this.ratings.length > 0) {
-    this.rating = parseFloat((this.ratings.reduce((a, b) => a + b) / this.ratings.length).toFixed(1));
+    this.rating.average = parseFloat((this.ratings.reduce((a, b) => a + b) / this.ratings.length).toFixed(1));
   }
   this.isProfileComplete = !!(
     this.specializations.length &&
@@ -231,7 +243,8 @@ coachSchema.virtual('ratingCount').get(function() {
 // Index for better query performance
 coachSchema.index({ user: 1 });
 coachSchema.index({ specializations: 1 });
-coachSchema.index({ averageRating: -1 });
+coachSchema.index({ 'rating.average': -1 });
+coachSchema.index({ status: 1 });
 coachSchema.index({ isApproved: 1 });
 coachSchema.index({ approvalStatus: 1 });
 coachSchema.index({ 'availability.date': 1 });
@@ -240,7 +253,7 @@ coachSchema.index({ 'availability.date': 1 });
 coachSchema.methods.isAvailableForBooking = function() {
   return this.isProfileComplete && 
          this.hasSetAvailability && 
-         this.status === 'approved';
+         this.status === 'active';
 };
 
 // Method to check if a time slot is available

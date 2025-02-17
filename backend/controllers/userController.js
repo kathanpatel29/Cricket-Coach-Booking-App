@@ -5,6 +5,7 @@ const UserDeletionLog = require("../models/UserDeletionLog");
 const { AppError, catchAsync } = require("../utils/errorHandler");
 const { successResponse, formatResponse } = require("../utils/responseFormatter");
 const { deleteOldProfileImage } = require('../utils/imageUpload');
+const mongoose = require('mongoose');
 
 // Get all users (admin only)
 exports.getAllUsers = catchAsync(async (req, res) => {
@@ -72,26 +73,42 @@ exports.deleteUser = catchAsync(async (req, res) => {
 
 // Get dashboard stats (admin only)
 exports.getDashboardStats = catchAsync(async (req, res) => {
-  const totalUsers = await User.countDocuments();
-  const clientCount = await User.countDocuments({ role: 'client' });
-  const coachCount = await User.countDocuments({ role: 'coach' });
-  const activeUsers = await User.countDocuments({ isActive: true });
-  const inactiveUsers = await User.countDocuments({ isActive: false });
+  const stats = await Booking.aggregate([
+    { $match: { client: mongoose.Types.ObjectId(req.user.id) } },
+    {
+      $group: {
+        _id: null,
+        totalSessions: { $sum: 1 },
+        upcomingSessions: {
+          $sum: {
+            $cond: [
+              { $and: [
+                { $eq: ['$status', 'confirmed'] },
+                { $gt: ['$date', new Date()] }
+              ]},
+              1,
+              0
+            ]
+          }
+        },
+        totalSpent: {
+          $sum: { $cond: [{ $eq: ['$paymentStatus', 'paid'] }, '$totalAmount', 0] }
+        },
+        reviewsGiven: {
+          $sum: { $cond: [{ $ifNull: ['$review', false] }, 1, 0] }
+        }
+      }
+    }
+  ]);
 
-  const recentUsers = await User.find()
-    .select('-password')
-    .sort('-createdAt')
-    .limit(5);
-
-  successResponse(res, 200, {
-    stats: {
-      totalUsers,
-      clientCount,
-      coachCount,
-      activeUsers,
-      inactiveUsers
-    },
-    recentUsers
+  res.json({
+    status: 'success',
+    data: stats[0] || {
+      totalSessions: 0,
+      upcomingSessions: 0,
+      totalSpent: 0,
+      reviewsGiven: 0
+    }
   });
 });
 
