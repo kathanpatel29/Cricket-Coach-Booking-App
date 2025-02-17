@@ -23,10 +23,6 @@ export const getNavLinks = (role) => {
     ],
     admin: [
       { to: '/admin-dashboard', label: 'Dashboard' },
-      { to: '/admin/coaches', label: 'Manage Coaches' },
-      { to: '/admin/users', label: 'Users' },
-      { to: '/admin/bookings', label: 'Bookings' },
-      { to: '/admin/reports', label: 'Reports' }
     ]
   };
 
