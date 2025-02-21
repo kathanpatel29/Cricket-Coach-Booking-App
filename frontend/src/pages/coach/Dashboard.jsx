@@ -17,7 +17,7 @@ import {
   Schedule as ScheduleIcon
 } from '@mui/icons-material';
 import { Link as RouterLink } from 'react-router-dom';
-import { coachService } from '../../services/api';
+import { coachService, authService } from '../../services/api';
 import { CURRENCY } from '../../utils/constants';
 import BookingList from '../../components/bookings/BookingList';
 import ReviewList from '../../components/reviews/ReviewList';
@@ -40,14 +40,16 @@ const StatCard = ({ title, value, icon, color }) => (
 );
 
 const Dashboard = () => {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    fetchDashboardData();
-  }, []);
+    if (user?.isApproved) {
+      fetchDashboardData();
+    }
+  }, [user?.isApproved]);
 
   const fetchDashboardData = async () => {
     try {
@@ -63,7 +65,7 @@ const Dashboard = () => {
     }
   };
 
-  if (!user.isApproved) {
+  if (!user?.isApproved) {
     return (
       <Box p={3}>
         <Alert severity="info" sx={{ mb: 3 }}>
@@ -87,6 +89,14 @@ const Dashboard = () => {
             <li>Complete any pending documentation</li>
             <li>Prepare your coaching schedule</li>
           </ul>
+          <Button 
+            variant="contained" 
+            color="primary" 
+            onClick={refreshUser} 
+            sx={{ mt: 2 }}
+          >
+            Check Approval Status
+          </Button>
         </Paper>
       </Box>
     );
@@ -111,7 +121,7 @@ const Dashboard = () => {
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
             title="Upcoming Sessions"
-            value={stats.upcomingSessions}
+            value={stats?.upcomingSessions || 0}
             icon={<EventIcon fontSize="large" />}
             color="#1976d2"
           />
@@ -119,7 +129,7 @@ const Dashboard = () => {
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
             title="Monthly Earnings"
-            value={CURRENCY.format(stats.monthlyEarnings)}
+            value={CURRENCY.format(stats?.monthlyEarnings || 0)}
             icon={<MoneyIcon fontSize="large" />}
             color="#2e7d32"
           />
@@ -127,7 +137,7 @@ const Dashboard = () => {
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
             title="Average Rating"
-            value={stats.averageRating?.toFixed(1) || 'N/A'}
+            value={(stats?.averageRating || 0).toFixed(1)}
             icon={<StarIcon fontSize="large" />}
             color="#ed6c02"
           />
@@ -135,7 +145,7 @@ const Dashboard = () => {
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
             title="Hours Coached"
-            value={stats.totalHours}
+            value={stats?.totalHours || 0}
             icon={<ScheduleIcon fontSize="large" />}
             color="#9c27b0"
           />

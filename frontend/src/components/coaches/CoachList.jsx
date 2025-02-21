@@ -20,6 +20,7 @@ import { useAuth } from '../../contexts/AuthContext';
 
 const CoachList = ({ onBookSession }) => {
   const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [coaches, setCoaches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -78,7 +79,7 @@ const CoachList = ({ onBookSession }) => {
     </Grid>
   );
 
-  if (user.role === 'coach') {
+  if (isAdmin) {
     return null;
   }
 

@@ -5,23 +5,23 @@ const VALID_SPECIALIZATIONS = ['batting', 'bowling', 'fielding', 'wicket-keeping
 
 const availabilitySchema = new mongoose.Schema({
   date: {
-    type: Date,
+    type: String,
     required: true
   },
-  slots: [{
-    startTime: {
-      type: String,
-      required: true
-    },
-    endTime: {
-      type: String,
-      required: true
-    },
-    isBooked: {
-      type: Boolean,
-      default: false
-    }
-  }]
+  time: {
+    type: String,
+    required: true
+  }
+});
+
+const recurringAvailabilitySchema = new mongoose.Schema({
+  Monday: [String],
+  Tuesday: [String],
+  Wednesday: [String],
+  Thursday: [String],
+  Friday: [String],
+  Saturday: [String],
+  Sunday: [String]
 });
 
 const emergencyOffSchema = new mongoose.Schema({
@@ -98,6 +98,10 @@ const coachSchema = new mongoose.Schema({
     maxlength: 1000
   },
   availability: [availabilitySchema],
+  recurringAvailability: {
+    type: recurringAvailabilitySchema,
+    default: () => ({})
+  },
   emergencyOff: [emergencyOffSchema],
   certifications: String,
   profileImage: String,

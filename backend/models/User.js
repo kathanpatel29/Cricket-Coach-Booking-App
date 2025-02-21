@@ -77,6 +77,19 @@ name: {
       type: String,
       default: 'en'
     }
+  },
+  isApproved: {
+    type: Boolean,
+    default: false
+  },
+  approvedAt: {
+    type: Date,
+    default: null
+  },
+  approvedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
   }
 }, {
   timestamps: true,
@@ -106,10 +119,23 @@ userSchema.methods.comparePassword = async function(candidatePassword) {
 
 userSchema.methods.generateAuthToken = function() {
   return jwt.sign(
-    { id: this._id },
+    { 
+      id: this._id,
+      role: this.role,
+      isApproved: this.isApproved
+    },
     process.env.JWT_SECRET_KEY,
     { expiresIn: '24h' }
   );
+};
+
+// Add method to update approval status
+userSchema.methods.updateApprovalStatus = async function(approvedBy, isApproved = true) {
+  this.isApproved = isApproved;
+  this.approvedAt = isApproved ? new Date() : null;
+  this.approvedBy = isApproved ? approvedBy : null;
+  await this.save();
+  return this;
 };
 
 const User = mongoose.model('User', userSchema);

@@ -79,41 +79,45 @@ exports.getAllCoaches = catchAsync(async (req, res) => {
     query.hasAvailability = true;
   }
 
-  const coaches = await Coach.aggregate([
-    { $match: query },
-    {
-      $lookup: {
-        from: 'availabilities',
-        localField: '_id',
-        foreignField: 'coach',
-        as: 'availabilitySlots'
-      }
-    },
-    {
-      $addFields: {
-        hasAvailability: { $gt: [{ $size: '$availabilitySlots' }, 0] },
-        nextAvailableSlot: {
-          $min: '$availabilitySlots.startTime'
-        }
-      }
-    },
-    {
-      $project: {
-        availabilitySettings: 1
-      }
-    }
-  ])
-  .skip((page - 1) * limit)
-  .limit(limit);
+  const coaches = await Coach.find(query)
+    .populate('user', 'name email profileImage')
+    .populate('reviews')
+    .select('specializations experience hourlyRate bio availability recurringAvailability averageRating totalReviews')
+    .skip((page - 1) * limit)
+    .limit(limit);
 
   const total = await Coach.countDocuments(query);
+
+  // Process each coach to include required fields
+  const processedCoaches = coaches.map(coach => {
+    const hasAvailability = coach.availability.length > 0 || Object.values(coach.recurringAvailability || {}).some(slots => slots.length > 0);
+    const nextAvailableSlot = coach.availability[0]?.date || null;
+
+    return {
+      _id: coach._id,
+      name: coach.user.name,
+      email: coach.user.email,
+      profileImage: coach.user.profileImage,
+      specializations: coach.specializations || [],
+      experience: coach.experience || 0,
+      hourlyRate: coach.hourlyRate || 0,
+      bio: coach.bio || '',
+      averageRating: coach.averageRating || 0,
+      totalReviews: coach.reviews?.length || 0,
+      hasAvailability,
+      nextAvailableSlot,
+      availabilitySettings: {
+        bookingCutoffHours: 12 // Default value
+      }
+    };
+  });
 
   res.json({
     status: 'success',
     data: {
-      coaches,
+      coaches: processedCoaches,
       totalPages: Math.ceil(total / limit),
-      currentPage: page
+      currentPage: parseInt(page)
     }
   });
 });
@@ -121,7 +125,9 @@ exports.getAllCoaches = catchAsync(async (req, res) => {
 // Get coach by ID (public)
 exports.getCoachById = catchAsync(async (req, res) => {
   const coach = await Coach.findById(req.params.id)
-    .populate('user', 'name email');
+    .populate('user', 'name email profileImage')
+    .populate('reviews')
+    .select('specializations experience hourlyRate bio availability recurringAvailability averageRating totalReviews location');
   
   if (!coach) {
     return res.status(404).json({
@@ -129,10 +135,29 @@ exports.getCoachById = catchAsync(async (req, res) => {
       message: 'Coach not found'
     });
   }
+
+  // Process coach data to match frontend expectations
+  const processedCoach = {
+    _id: coach._id,
+    name: coach.user.name,
+    email: coach.user.email,
+    profileImage: coach.user.profileImage,
+    specializations: coach.specializations || [],
+    experience: coach.experience || 0,
+    hourlyRate: coach.hourlyRate || 0,
+    bio: coach.bio || '',
+    averageRating: coach.averageRating || 0,
+    totalReviews: coach.reviews?.length || 0,
+    location: coach.location || '',
+    availability: coach.availability || [],
+    reviews: coach.reviews || [],
+  };
   
   res.json({
     status: 'success',
-    data: coach
+    data: {
+      coach: processedCoach
+    }
   });
 });
 
@@ -214,25 +239,56 @@ exports.getDashboardStats = catchAsync(async (req, res) => {
 
 // Get coach availability
 exports.getAvailability = catchAsync(async (req, res) => {
+  const { date } = req.query;
   const coach = await Coach.findOne({ user: req.user.id });
+  
+  if (!coach) {
+    throw new AppError('Coach profile not found', 404);
+  }
+
+  // Get availability for specific date and recurring
+  const availabilityData = {
+    availableSlots: coach.availability?.filter(slot => slot.date === date) || [],
+    recurringAvailability: coach.recurringAvailability || {}
+  };
   
   res.json({
     status: 'success',
-    data: coach.availability || []
+    data: availabilityData
   });
 });
 
-// Add new availability slot
+// Add or update availability
 exports.addAvailability = catchAsync(async (req, res) => {
-  const coach = await Coach.findOneAndUpdate(
-    { user: req.user.id },
-    { $push: { availability: req.body } },
-    { new: true }
-  );
+  const { date, slots, recurring } = req.body;
+  const coach = await Coach.findOne({ user: req.user.id });
+  
+  if (!coach) {
+    throw new AppError('Coach profile not found', 404);
+  }
+
+  // Update recurring availability if provided
+  if (recurring) {
+    coach.recurringAvailability = recurring;
+  }
+
+  // Update specific date availability if provided
+  if (date && slots) {
+    // Remove existing slots for this date
+    coach.availability = coach.availability.filter(slot => slot.date !== date);
+    // Add new slots
+    coach.availability.push(...slots.map(time => ({ date, time })));
+  }
+
+  await coach.save();
   
   res.json({
     status: 'success',
-    data: coach.availability
+    message: 'Availability updated successfully',
+    data: {
+      availableSlots: coach.availability.filter(slot => slot.date === date),
+      recurringAvailability: coach.recurringAvailability
+    }
   });
 });
 
@@ -244,8 +300,13 @@ exports.deleteAvailability = catchAsync(async (req, res) => {
     { new: true }
   );
   
+  if (!coach) {
+    throw new AppError('Coach profile not found', 404);
+  }
+  
   res.json({
     status: 'success',
+    message: 'Availability slot deleted successfully',
     data: coach.availability
   });
 });

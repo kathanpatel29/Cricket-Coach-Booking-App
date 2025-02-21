@@ -38,7 +38,7 @@ exports.getPendingCoaches = catchAsync(async (req, res) => {
 });
 
 exports.approveCoach = catchAsync(async (req, res) => {
-  const { coachId } = req.params;
+  const coachId = req.params.id;
   const { notes } = req.body;
 
   const coach = await Coach.findById(coachId).populate('user');
@@ -55,13 +55,37 @@ exports.approveCoach = catchAsync(async (req, res) => {
 
   await coach.save();
 
-  // Update user status
-  await User.findByIdAndUpdate(coach.user._id, {
-    isApproved: true,
-    role: 'coach'
+  // Update user status with all necessary fields
+  const updatedUser = await User.findByIdAndUpdate(
+    coach.user._id,
+    {
+      isApproved: true,
+      role: 'coach',
+      approvedAt: new Date(),
+      approvedBy: req.user.id
+    },
+    { new: true }
+  ).select('-password');
+
+  // Generate new token with updated user data
+  const token = updatedUser.generateAuthToken ? updatedUser.generateAuthToken() : null;
+
+  // Log the update for debugging
+  console.log('Coach approved:', {
+    coachId,
+    userId: coach.user._id,
+    status: coach.status,
+    isApproved: coach.isApproved,
+    userIsApproved: updatedUser.isApproved,
+    userRole: updatedUser.role,
+    newTokenGenerated: !!token
   });
 
-  successResponse(res, 200, { coach }, "Coach approved successfully");
+  successResponse(res, 200, { 
+    coach,
+    user: updatedUser,
+    token 
+  }, "Coach approved successfully");
 });
 
 exports.rejectCoach = catchAsync(async (req, res) => {

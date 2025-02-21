@@ -97,7 +97,8 @@ export const coachService = {
   getAnalytics: () => api.get('/coach/analytics'),
   
   // Availability
-  getAvailability: (params) => api.get('/coaches/availability', { params }),
+  getAvailability: (date) => api.get('/coaches/availability', { params: { date } }),
+  updateAvailability: (data) => api.post('/coaches/availability', data),
   addAvailability: (availability) => api.post('/coaches/availability', availability),
   deleteAvailability: (id) => api.delete(`/coaches/availability/${id}`),
   
@@ -167,6 +168,8 @@ export const bookingService = {
   createPaymentIntent: (bookingId) => api.post(`/payments/create-payment-intent/${bookingId}`),
   updateSessionStatus: (sessionId, status) => api.put(`/coach/sessions/${sessionId}`, { status }),
   getSessions: () => api.get('/coach/sessions'),
+  getAvailableSlots: (coachId, date) => api.get(`/bookings/slots/${coachId}`, { params: { date } }),
+  bookSession: (coachId, timeSlotId) => api.post('/bookings', { coachId, timeSlotId })
 };
 
 // Payment Service
@@ -190,7 +193,14 @@ export const adminService = {
   
   // Coach Management
   getPendingCoaches: () => api.get('/admin/coaches/pending'),
-  approveCoach: (coachId, notes) => api.put(`/admin/coaches/${coachId}/approve`, { notes }),
+  approveCoach: async (coachId, notes) => {
+    const response = await api.put(`/admin/coaches/${coachId}/approve`, { notes });
+    // If a new token is provided, update it in localStorage
+    if (response.data?.data?.token) {
+      localStorage.setItem('token', response.data.data.token);
+    }
+    return response;
+  },
   rejectCoach: (coachId, reason) => api.put(`/admin/coaches/${coachId}/reject`, { reason }),
   getCoachApprovalHistory: () => api.get('/admin/coaches/approval-history'),
   

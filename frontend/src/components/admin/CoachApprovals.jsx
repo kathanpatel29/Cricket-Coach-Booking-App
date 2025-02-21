@@ -22,8 +22,10 @@ import {
 } from '@mui/material';
 import { adminService } from '../../services/api';
 import { toast } from 'react-hot-toast';
+import { useAuth } from '../../contexts/AuthContext';
 
 const CoachApprovals = () => {
+  const { refreshUser } = useAuth();
   const [pendingCoaches, setPendingCoaches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -40,10 +42,12 @@ const CoachApprovals = () => {
     try {
       setLoading(true);
       const response = await adminService.getPendingCoaches();
-      setPendingCoaches(response.data.coaches || []);
+      setPendingCoaches(response.data.data.coaches || []);
+      console.log('Pending coaches response:', response.data);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to fetch pending coaches');
       toast.error('Error loading pending coaches');
+      console.error('Error fetching pending coaches:', err);
     } finally {
       setLoading(false);
     }
@@ -52,11 +56,24 @@ const CoachApprovals = () => {
   const handleApprove = async (coachId) => {
     try {
       setActionLoading(true);
-      await adminService.approveCoach(coachId, 'Approved by admin');
-      setPendingCoaches(pendingCoaches.filter(coach => coach.id !== coachId));
+      console.log('Approving coach with ID:', coachId);
+      const response = await adminService.approveCoach(coachId, 'Approved by admin');
+      setPendingCoaches(pendingCoaches.filter(coach => coach._id !== coachId));
       toast.success('Coach approved successfully');
+      
+      // Broadcast the approval to all tabs/windows
+      const approvalEvent = new CustomEvent('coachApproved', {
+        detail: { coachId, timestamp: Date.now() }
+      });
+      window.dispatchEvent(approvalEvent);
+      
+      // Set both localStorage triggers
+      window.localStorage.setItem('forceRefresh', 'true');
+      window.localStorage.setItem('coachApprovalUpdate', Date.now().toString());
+      
       fetchPendingCoaches();
     } catch (err) {
+      console.error('Approve coach error:', err);
       toast.error(err.response?.data?.message || 'Failed to approve coach');
     } finally {
       setActionLoading(false);

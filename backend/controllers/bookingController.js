@@ -15,20 +15,24 @@ const { startOfDay, endOfDay } = require('date-fns');
 // @route   POST /api/bookings
 // @access  Private/User
 exports.createBooking = catchAsync(async (req, res) => {
-  const { timeSlotId } = req.body;
+  const { coachId, timeSlotId } = req.body;
 
-  const timeSlot = await TimeSlot.findById(timeSlotId)
-    .populate({
-      path: 'coach',
-      populate: { path: 'user', select: 'isApproved' }
-    });
+  // Validate coach exists and is approved
+  const coach = await Coach.findById(coachId)
+    .populate('user', 'isApproved');
 
-  if (!timeSlot) {
-    throw new AppError("Time slot not found", 404);
+  if (!coach) {
+    throw new AppError("Coach not found", 404);
   }
 
-  if (!timeSlot.coach.user.isApproved) {
+  if (!coach.user.isApproved) {
     throw new AppError("Coach not approved for bookings", 400);
+  }
+
+  // Find and validate time slot
+  const timeSlot = await TimeSlot.findById(timeSlotId);
+  if (!timeSlot) {
+    throw new AppError("Time slot not found", 404);
   }
 
   if (timeSlot.status !== 'available') {
@@ -40,22 +44,23 @@ exports.createBooking = catchAsync(async (req, res) => {
   const slotDateTime = new Date(timeSlot.date);
   const [hours, minutes] = timeSlot.startTime.split(':');
   slotDateTime.setHours(parseInt(hours), parseInt(minutes));
-  const cutoffHours = timeSlot.coach.availabilitySettings?.bookingCutoffHours || 12;
+  const cutoffHours = coach.availabilitySettings?.bookingCutoffHours || 12;
   
   if ((slotDateTime - now) / (1000 * 60 * 60) < cutoffHours) {
     throw new AppError("Booking cutoff time has passed", 400);
   }
 
-  // Create booking
+  // Create booking with proper ObjectIds
   const booking = await Booking.create({
-    user: req.user._id,
-    coach: timeSlot.coach._id,
+    user: req.user._id, // This is already an ObjectId from auth middleware
+    coach: coach._id,   // Using the coach._id from the found coach
     timeSlot: timeSlot._id,
     date: timeSlot.date,
     startTime: timeSlot.startTime,
     endTime: timeSlot.endTime,
     duration: timeSlot.duration,
-    status: 'pending'
+    status: 'pending',
+    paymentAmount: coach.hourlyRate * (timeSlot.duration / 60) // Calculate based on duration
   });
 
   // Update time slot status
@@ -63,9 +68,15 @@ exports.createBooking = catchAsync(async (req, res) => {
   timeSlot.booking = booking._id;
   await timeSlot.save();
 
+  // Return the booking with populated fields
+  const populatedBooking = await Booking.findById(booking._id)
+    .populate('user', 'name email')
+    .populate('coach', 'user specializations hourlyRate')
+    .populate('timeSlot');
+
   res.status(201).json({
     status: 'success',
-    data: { booking }
+    data: { booking: populatedBooking }
   });
 });
 
