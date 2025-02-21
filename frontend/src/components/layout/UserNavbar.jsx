@@ -118,12 +118,6 @@ const UserNavbar = ({ onSidebarToggle }) => {
             }}>
               <PersonIcon sx={{ mr: 1 }} /> Profile
             </MenuItem>
-            <MenuItem onClick={() => {
-              handleMenuClose();
-              navigate('/user/settings');
-            }}>
-              <SettingsIcon sx={{ mr: 1 }} /> Settings
-            </MenuItem>
             <Divider />
             <MenuItem onClick={handleLogout}>
               <LogoutIcon sx={{ mr: 1 }} /> Logout

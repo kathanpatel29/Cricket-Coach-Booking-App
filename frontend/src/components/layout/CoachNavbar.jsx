@@ -88,9 +88,6 @@ const CoachNavbar = ({ onSidebarToggle }) => {
             <MenuItem onClick={() => navigate('/coach/profile')}>
               <PersonIcon sx={{ mr: 1 }} /> Profile
             </MenuItem>
-            <MenuItem onClick={() => navigate('/coach/settings')}>
-              <SettingsIcon sx={{ mr: 1 }} /> Settings
-            </MenuItem>
             <Divider />
             <MenuItem onClick={handleLogout}>
               <LogoutIcon sx={{ mr: 1 }} /> Logout

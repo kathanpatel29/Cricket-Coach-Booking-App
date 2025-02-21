@@ -13,7 +13,6 @@ import {
 import {
   Menu as MenuIcon,
   Person as PersonIcon,
-  Settings as SettingsIcon,
   ExitToApp as LogoutIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
@@ -79,9 +78,6 @@ const AdminNavbar = ({ onSidebarToggle }) => {
           >
             <MenuItem onClick={() => navigate('/admin/profile')}>
               <PersonIcon sx={{ mr: 1 }} /> Profile
-            </MenuItem>
-            <MenuItem onClick={() => navigate('/admin/settings')}>
-              <SettingsIcon sx={{ mr: 1 }} /> Settings
             </MenuItem>
             <Divider />
             <MenuItem onClick={handleLogout}>

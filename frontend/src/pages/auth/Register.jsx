@@ -243,6 +243,19 @@ const Register = () => {
           >
             {loading ? <CircularProgress size={24} /> : 'Register'}
           </Button>
+
+          <Box sx={{ mt: 2, textAlign: 'center' }}>
+            <Typography variant="body2" color="textSecondary">
+              Already have an account?{' '}
+              <Button
+                color="primary"
+                onClick={() => navigate('/login')}
+                sx={{ textTransform: 'none' }}
+              >
+                Sign in
+              </Button>
+            </Typography>
+          </Box>
         </form>
       </Paper>
     </Box>

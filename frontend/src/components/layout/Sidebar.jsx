@@ -18,7 +18,6 @@ import {
   EventNote as EventIcon,
   Payment as PaymentIcon,
   Star as StarIcon,
-  Settings as SettingsIcon,
   CalendarMonth as CalendarIcon,
   Analytics as AnalyticsIcon
 } from '@mui/icons-material';
@@ -51,8 +50,6 @@ const Sidebar = ({ open, onClose, type = 'user' }) => {
         return <PaymentIcon />;
       case 'reviews':
         return <StarIcon />;
-      case 'settings':
-        return <SettingsIcon />;
       case 'availability':
         return <CalendarIcon />;
       case 'analytics':

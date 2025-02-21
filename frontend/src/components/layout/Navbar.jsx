@@ -17,7 +17,6 @@ import {
 import {
   Menu as MenuIcon,
   Person as PersonIcon,
-  Settings as SettingsIcon,
   ExitToApp as LogoutIcon,
   Dashboard as DashboardIcon
 } from '@mui/icons-material';
@@ -139,12 +138,6 @@ const Navbar = ({ onSidebarToggle }) => {
                   navigate(`/${user.role}/profile`);
                 }}>
                   <PersonIcon sx={{ mr: 1 }} /> Profile
-                </MenuItem>
-                <MenuItem onClick={() => {
-                  handleMenuClose();
-                  navigate(`/${user.role}/settings`);
-                }}>
-                  <SettingsIcon sx={{ mr: 1 }} /> Settings
                 </MenuItem>
                 <Divider />
                 <MenuItem onClick={handleLogout}>
