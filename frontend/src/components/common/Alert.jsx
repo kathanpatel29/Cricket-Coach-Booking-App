@@ -1,16 +1,52 @@
-const Alert = ({ type = 'info', message }) => {
-    const styles = {
-      success: 'bg-green-100 border-green-500 text-green-700',
-      error: 'bg-red-100 border-red-500 text-red-700',
-      info: 'bg-blue-100 border-blue-500 text-blue-700',
-      warning: 'bg-yellow-100 border-yellow-500 text-yellow-700'
-    };
-  
-    return (
-      <div className={`${styles[type]} border-l-4 p-4 mb-4 rounded`}>
-        {message}
-      </div>
-    );
+import React from 'react';
+import {
+  Alert as MuiAlert,
+  Snackbar,
+  IconButton
+} from '@mui/material';
+import { Close as CloseIcon } from '@mui/icons-material';
+
+const Alert = ({ 
+  open, 
+  message, 
+  severity = 'info', 
+  duration = 6000,
+  onClose 
+}) => {
+  const handleClose = (event, reason) => {
+    if (reason === 'clickaway') {
+      return;
+    }
+    if (onClose) {
+      onClose();
+    }
   };
-  
-  export default Alert;
+
+  return (
+    <Snackbar
+      open={open}
+      autoHideDuration={duration}
+      onClose={handleClose}
+      anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+    >
+      <MuiAlert
+        elevation={6}
+        variant="filled"
+        severity={severity}
+        action={
+          <IconButton
+            size="small"
+            color="inherit"
+            onClick={handleClose}
+          >
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        }
+      >
+        {message}
+      </MuiAlert>
+    </Snackbar>
+  );
+};
+
+export default Alert; 

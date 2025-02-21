@@ -3,20 +3,25 @@ import { toast } from 'react-toastify';
 
 // Create axios instance with base URL and default headers
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: 'http://localhost:5000/api',
   headers: {
     'Content-Type': 'application/json'
   }
 });
 
-// Add auth token to requests
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+// Add request interceptor to include token
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
   }
-  return config;
-});
+);
 
 // Handle response errors
 api.interceptors.response.use(
@@ -43,64 +48,74 @@ export const authService = {
   forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
   resetPassword: (token, password) => api.post(`/auth/reset-password/${token}`, { password }),
   verifyEmail: (token) => api.get(`/auth/verify-email/${token}`),
-  refreshToken: () => api.post('/auth/refresh-token'),
-  
-  // Get dashboard route based on user role
-  getDashboardRoute: (role) => {
-    switch (role) {
-      case 'admin':
-        return '/admin/dashboard';
-      case 'coach':
-        return '/coach/dashboard';
-      case 'client':
-        return '/client/dashboard';
-      default:
-        return '/';
-    }
-  },
+  checkEmail: (email) => api.post('/auth/check-email', { email }),
   getProfile: () => api.get('/auth/me'),
   updateProfile: (data) => api.put('/auth/profile', data),
-  checkEmail: (email) => api.post('/auth/check-email', { email }),
+  registerCoach: (data) => api.post('/auth/coach/register', data),
+  getCoachStatus: () => api.get('/auth/coach/status'),
+  updatePhone: (phone) => api.put('/auth/update-phone', { phone }),
+  changePassword: (data) => api.put('/auth/change-password', data),
 };
 
-// User Service
 export const userService = {
+  getDashboardStats: () => api.get('/users/dashboard/stats'),
+  getBookings: () => api.get('/user/bookings'),
+  getReviews: () => api.get('/user/reviews'),
+  getPayments: () => api.get('/user/payments'),
   getProfile: () => api.get('/users/profile'),
-  updateProfile: (data) => {
-    const config = data instanceof FormData ? {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    } : {};
-    return api.put('/users/profile', data, config);
-  },
-  deleteAccount: () => api.delete('/users/profile'),
+  updateProfile: (data) => api.put('/users/profile', data),
+  updatePhone: (phone) => api.put('/users/phone', { phone }),
+  updateProfileImage: (data) => api.put('/users/profile-image', data),
+  updateCurrentUserProfile: (data) => api.put('/users/current/profile', data),
+  deleteCurrentUserAccount: () => api.delete('/users/profile'),
   changePassword: (data) => api.put('/users/password', data),
+  getAllCoaches: () => api.get('/users/coaches'),
+  getCoachById: (id) => api.get(`/users/coaches/${id}`),
+  getCoachAvailability: (id) => api.get(`/users/coaches/${id}/availability`),
+  getAvailabilitySettings: () => api.get('/users/availability-settings'),
+  updateAvailabilitySettings: (settings) => api.put('/users/availability-settings', settings),
+  getAvailableCoaches: () => api.get('/users/available-coaches'),
 };
 
 // Coach Service
 export const coachService = {
   // Dashboard
-  getDashboardStats: () => api.get('/coach/dashboard/stats'),
+  getDashboardStats: () => api.get('/coaches/dashboard/stats'),
+  
+  // Bookings
+  getBookings: () => api.get('/coach/bookings'),
   
   // Profile
-  getProfile: () => api.get('/coach/profile'),
-  updateProfile: (data) => api.put('/coach/profile', data),
+  getProfile: () => api.get('/coaches/profile'),
+  updateProfile: (data) => api.put('/coaches/profile', data),
   
   // Schedule
   getSchedule: () => api.get('/coaches/schedule'),
-  updateSchedule: (data) => api.put('/coaches/schedule', data),
+  updateSchedule: (schedule) => api.put('/coaches/schedule', schedule),
   
-  // Bookings
-  getBookings: () => api.get('/coaches/bookings'),
-  updateBookingStatus: (bookingId, status) => 
-    api.put(`/coaches/bookings/${bookingId}/status`, { status }),
+  // Analytics
+  getAnalytics: () => api.get('/coach/analytics'),
   
-  // Emergency off
-  getEmergencyOff: () => api.get('/coaches/emergency-off'),
-  setEmergencyOff: (data) => api.post('/coaches/emergency-off', data),
-  removeEmergencyOff: (date) => api.delete(`/coaches/emergency-off/${date}`),
+  // Availability
+  getAvailability: (params) => api.get('/coaches/availability', { params }),
+  addAvailability: (availability) => api.post('/coaches/availability', availability),
+  deleteAvailability: (id) => api.delete(`/coaches/availability/${id}`),
   
   // Public
-  getAll: () => api.get('/coaches'),
+  getAll: async () => {
+    try {
+      const response = await api.get('/coaches');
+      return {
+        data: {
+          status: 'success',
+          data: response.data?.data || [] // Ensure we return an empty array if no data
+        }
+      };
+    } catch (error) {
+      console.error('Error in getAllCoaches:', error);
+      throw new Error(error.response?.data?.message || 'Failed to fetch coaches');
+    }
+  },
   getById: (id) => api.get(`/coaches/${id}`),
   
   // Stats
@@ -109,50 +124,49 @@ export const coachService = {
   getReviews: () => api.get('/coaches/reviews'),
 
   // Sessions
-  getSessions: () => api.get('/coach/sessions'),
+  getSessions: (status) => api.get('/coaches/sessions', { params: { status } }),
   updateSession: (sessionId, data) => api.put(`/coaches/sessions/${sessionId}`, data),
 
-  // Availability
-  getAvailability: () => api.get('/coach/availability'),
-  addAvailability: (data) => api.post('/coach/availability', data),
-  deleteAvailability: (id) => api.delete(`/coach/availability/${id}`),
-  
-  // Client View
+  // User View
   getAllAvailability: () => api.get('/availability'),
   getCoachAvailability: (coachId) => api.get(`/coaches/${coachId}/availability`),
 
-  // Client Availability View
+  // User Availability View
   getAvailableCoaches: () => api.get('/coaches/available'),
   getCoachAvailability: (coachId) => api.get(`/coaches/${coachId}/availability`),
-};
 
-// Client Service
-export const clientService = {
-  getDashboardStats: () => api.get('/client/dashboard/stats'),
-  getBookings: () => api.get('/client/bookings'),
-  getReviews: () => api.get('/client/reviews'),
-  getPayments: () => api.get('/client/payments'),
-  getProfile: () => api.get('/client/profile'),
-  updateProfile: (data) => api.put('/client/profile', data),
-  cancelBooking: (bookingId, reason) => 
-    api.post(`/clients/bookings/${bookingId}/cancel`, { reason }),
-  submitReview: (bookingId, data) => 
-    api.post(`/clients/bookings/${bookingId}/review`, data),
+  getAvailabilitySettings: () => api.get('/coaches/settings/availability'),
+  
+  updateAvailabilitySettings: (settings) => api.put('/coaches/settings/availability', settings),
+  
+  getAllCoaches: (params) => {
+    try {
+      return api.get('/coaches', { params });
+    } catch (error) {
+      console.error('Error in getAllCoaches:', error);
+      throw new Error(error.response?.data?.message || 'Failed to fetch coaches');
+    }
+  },
+
+  // Emergency off
+  setEmergencyOff: (data) => api.post('/coaches/emergency-off', data),
+  getEmergencyOff: () => api.get('/coaches/emergency-off'),
 };
 
 // Booking Service
 export const bookingService = {
-  create: (data) => api.post('/bookings', data),
-  getById: (id) => api.get('/bookings/' + id),
-  getUserBookings: () => api.get('/bookings/client'),
+  createBooking: (data) => api.post('/bookings', data),
+  getBookings: (params) => api.get('/bookings', { params }),
+  getBookingById: (id) => api.get(`/bookings/${id}`),
+  updateBooking: (id, data) => api.put(`/bookings/${id}`, data),
+  cancelBooking: (id, reason) => api.put(`/bookings/${id}/cancel`, { reason }),
   getCoachBookings: (params) => api.get('/bookings/coach', { params }),
-  updateStatus: (id, status) => api.patch('/bookings/' + id + '/status', { status }),
-  cancelBooking: (id) => api.post('/bookings/' + id + '/cancel'),
-  reschedule: (id, data) => api.post('/bookings/' + id + '/reschedule', data),
-  confirmPayment: (bookingId) => api.post(`/payments/confirm-payment/${bookingId}`),
-  getAll: () => api.get('/bookings'),
-  getAvailableSlots: (coachId, date) => api.get(`/bookings/slots/${coachId}?date=${date}`),
+  getUserBookings: (params) => api.get('/bookings/user', { params }),
+  confirmBooking: (id) => api.put(`/bookings/${id}/confirm`),
+  rescheduleBooking: (id, data) => api.put(`/bookings/${id}/reschedule`, data),
   createPaymentIntent: (bookingId) => api.post(`/payments/create-payment-intent/${bookingId}`),
+  updateSessionStatus: (sessionId, status) => api.put(`/coach/sessions/${sessionId}`, { status }),
+  getSessions: () => api.get('/coach/sessions'),
 };
 
 // Payment Service
@@ -176,15 +190,17 @@ export const adminService = {
   
   // Coach Management
   getPendingCoaches: () => api.get('/admin/coaches/pending'),
-  approveCoach: (coachId) => api.post(`/admin/coaches/${coachId}/approve`),
-  rejectCoach: (coachId, data) => api.post(`/admin/coaches/${coachId}/reject`, data),
+  approveCoach: (coachId, notes) => api.put(`/admin/coaches/${coachId}/approve`, { notes }),
+  rejectCoach: (coachId, reason) => api.put(`/admin/coaches/${coachId}/reject`, { reason }),
+  getCoachApprovalHistory: () => api.get('/admin/coaches/approval-history'),
   
   // Dashboard
   getDashboardStats: () => api.get('/admin/dashboard/stats'),
   
   // Booking management
-  getAllBookings: () => api.get('/admin/bookings'),
+  getAllBookings: (filters) => api.get('/admin/bookings', { params: filters }),
   updateBooking: (id, data) => api.put(`/admin/bookings/${id}`, data),
+  processRefund: (bookingId) => api.post(`/admin/bookings/${bookingId}/refund`),
   
   // Reports
   getUserStats: () => api.get('/admin/reports/users'),
@@ -196,13 +212,56 @@ export const adminService = {
   getPendingReviews: () => api.get('/admin/reviews/pending'),
   moderateReview: (reviewId, data) => api.put(`/admin/reviews/${reviewId}/moderate`, data),
   getReviews: () => api.get('/admin/reviews'),
-  getPayments: () => api.get('/admin/payments'),
+  getPayments: () => api.get('/payments'),
+
+  //PaymentManagement
+  processPayout: (paymentId) => api.post(`/admin/payments/${paymentId}/payout`),
+  processRefund: (paymentId) => api.post(`/admin/payments/${paymentId}/refund`),
 };
 
 // Public Service
 export const publicService = {
-  getAllCoaches: () => api.get('/coaches'),
-  getCoachById: (id) => api.get(`/coaches/${id}`)
+  getAllCoaches: async (params) => {
+    try {
+      const response = await api.get('/coaches', { params });
+      return {
+        status: 'success',
+        data: {
+          coaches: response.data?.data?.coaches || [],
+          totalPages: response.data?.data?.totalPages || 1
+        }
+      };
+    } catch (error) {
+      console.error('Error in getAllCoaches:', error);
+      throw new Error(error.response?.data?.message || 'Failed to fetch coaches');
+    }
+  },
+  getCoachById: (id) => api.get(`/coaches/${id}`),
+  getCoachAvailability: (id) => api.get(`/coaches/${id}/availability`)
+};
+
+// Review Service
+export const reviewService = {
+  // Get reviews for a coach
+  getCoachReviews: (coachId, page) => api.get(`/reviews/coach/${coachId}`, { params: { page } }),
+  
+  // Get reviews by a user
+  getUserReviews: (page) => api.get('/reviews/user', { params: { page } }),
+  
+  // Create a new review
+  createReview: (data) => api.post('/reviews', data),
+  
+  // Update a review
+  updateReview: (reviewId, data) => api.put(`/reviews/${reviewId}`, data),
+  
+  // Delete a review
+  deleteReview: (reviewId) => api.delete(`/reviews/${reviewId}`),
+  
+  // Reply to a review (for coaches)
+  replyToReview: (reviewId, data) => api.post(`/reviews/${reviewId}/reply`, data),
+  
+  // Get review statistics
+  getReviewStats: (coachId) => api.get(`/reviews/coach/${coachId}`),
 };
 
 // Export the api instance

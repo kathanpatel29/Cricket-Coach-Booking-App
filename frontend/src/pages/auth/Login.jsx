@@ -1,10 +1,9 @@
-import React, { useState, useContext, useEffect } from "react"; // Add useEffect here
+import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { AuthContext } from "../../contexts/AuthContext";
-import Alert from "../../components/common/Alert";
-import { authService } from "../../services/api.js";
-import { Box, Button, TextField, Typography } from '@mui/material';
+import { Box, Button, TextField, Typography, Paper, Container } from '@mui/material';
 import { useAuth } from '../../contexts/AuthContext';
+import { authService } from '../../services/api';
+import Alert from '../../components/common/Alert';
 import { toast } from 'react-hot-toast';
 
 const Login = () => {
@@ -15,10 +14,10 @@ const Login = () => {
   });
   const [showAdminKey, setShowAdminKey] = useState(false);
   const [error, setError] = useState("");
+  const [emailError, setEmailError] = useState("");
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [emailError, setEmailError] = useState("");
 
   useEffect(() => {
     if (location.state?.email) {
@@ -74,37 +73,42 @@ const Login = () => {
     e.preventDefault();
     setError("");
 
+    if (!formData.email || !formData.password) {
+      setError("Please provide both email and password");
+      return;
+    }
+
     try {
-      // Validate admin login
-      if (formData.email.toLowerCase().includes('admin')) {
-        if (!formData.adminSecretKey) {
-          setError('Admin secret key is required for admin login');
-          return;
-        }
+      // Only send email and password in the login request
+      const loginData = {
+        email: formData.email,
+        password: formData.password
+      };
+
+      // If it's an admin login, include the admin key
+      if (showAdminKey) {
+        loginData.adminSecretKey = formData.adminSecretKey;
       }
 
-      const response = await login(formData);
-
-      if (response.data.status === 'success') {
-        const { role } = response.data.data.user;
-        
-        // Redirect based on user role
-        switch (role) {
-          case 'admin':
-            navigate('/dashboard');
-            break;
-          case 'coach':
-            navigate('/coach/dashboard');
-            break;
-          default:
-            navigate('/dashboard');
+      // Use the login function from AuthContext
+      const user = await login(loginData);
+      
+      // Handle redirections based on role
+      if (user.role === 'coach') {
+        if (!user.isApproved) {
+          toast.success('Your coach profile is pending approval. Access will be limited until approved.');
         }
-        
-        toast.success('Login successful!');
+        navigate('/coach/dashboard');
+      } else if (user.role === 'admin') {
+        navigate('/admin/dashboard');
+      } else {
+        navigate('/user/dashboard');
       }
-    } catch (err) {
-      setError(err.response?.data?.message || 'Login failed');
-      toast.error(err.response?.data?.message || 'Login failed');
+    } catch (error) {
+      console.error('Login error:', error);
+      const errorMessage = error.response?.data?.message || 'Invalid email or password';
+      setError(errorMessage);
+      toast.error(errorMessage);
     }
   };
 
@@ -194,4 +198,4 @@ const Login = () => {
   );
 };
 
-export default Login;
+export default Login; 

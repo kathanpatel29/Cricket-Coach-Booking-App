@@ -2,13 +2,14 @@ const express = require("express");
 const router = express.Router();
 const { protect, authorize } = require("../middleware/authMiddleware");
 const adminController = require("../controllers/adminController");
+const coachApprovalController = require('../controllers/coachApprovalController');
 
 // Protect all admin routes
 router.use(protect);
 router.use(authorize('admin'));
 
 // Dashboard
-router.get('/dashboard', adminController.getDashboardStats);
+// router.get('/dashboard', adminController.getDashboardStats);
 router.get('/dashboard/stats', adminController.getDashboardStats);
 
 // User Management
@@ -18,9 +19,10 @@ router.put('/users/:id', adminController.updateUser);
 router.delete('/users/:id', adminController.deleteUser);
 
 // Coach Management
-router.get('/coaches/pending', adminController.getPendingCoaches);
-router.post('/coaches/:id/approve', adminController.approveCoach);
-router.post('/coaches/:id/reject', adminController.rejectCoach);
+router.get('/coaches/pending', coachApprovalController.getPendingCoaches);
+router.put('/coaches/:id/approve', coachApprovalController.approveCoach);
+router.put('/coaches/:id/reject', coachApprovalController.rejectCoach);
+router.get('/coaches/approval-history', coachApprovalController.getCoachApprovalHistory);
 
 // Booking Management
 router.get('/bookings', adminController.getAllBookings);

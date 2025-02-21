@@ -11,9 +11,8 @@ exports.validate = (validations) => {
       return next();
     }
 
-    return res.status(400).json({
+    res.status(400).json({
       status: 'error',
-      message: 'Validation failed',
       errors: errors.array()
     });
   };
@@ -22,16 +21,14 @@ exports.validate = (validations) => {
 // Auth validation schemas
 exports.registerValidation = [
   body('name').trim().notEmpty().withMessage('Name is required'),
-  body('email').isEmail().withMessage('Please enter a valid email'),
-  body('password')
-    .isLength({ min: 6 })
-    .withMessage('Password must be at least 6 characters long')
+  body('email').isEmail().withMessage('Please provide a valid email'),
+  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
+  body('role').optional().isIn(['user', 'coach', 'admin']).withMessage('Invalid role')
 ];
 
 exports.loginValidation = [
-  body('email').isEmail().withMessage('Please enter a valid email'),
-  body('password').notEmpty().withMessage('Password is required'),
-  body('adminSecretKey').optional().isString().withMessage('Admin secret key must be a string')
+  body('email').isEmail().withMessage('Please provide a valid email'),
+  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long')
 ];
 
 // Coach validation schemas
@@ -58,6 +55,37 @@ exports.bookingValidation = [
   body('duration')
     .isInt({ min: 1, max: 4 })
     .withMessage('Duration must be between 1 and 4 hours')
+];
+
+// Time slot validation schemas
+exports.timeSlotValidation = [
+  body('date')
+    .isISO8601()
+    .withMessage('Please provide a valid date')
+    .custom(value => {
+      const date = new Date(value);
+      const now = new Date();
+      if (date < now) {
+        throw new Error('Cannot create time slots in the past');
+      }
+      return true;
+    }),
+  body('startTime')
+    .matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/)
+    .withMessage('Invalid start time format (HH:mm)'),
+  body('endTime')
+    .matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/)
+    .withMessage('Invalid end time format (HH:mm)')
+    .custom((value, { req }) => {
+      const start = req.body.startTime;
+      if (start && value <= start) {
+        throw new Error('End time must be after start time');
+      }
+      return true;
+    }),
+  body('duration')
+    .isInt({ min: 15, max: 180 })
+    .withMessage('Duration must be between 15 and 180 minutes')
 ];
 
 // Review validation schemas

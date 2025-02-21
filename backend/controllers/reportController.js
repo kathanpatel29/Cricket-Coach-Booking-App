@@ -9,7 +9,7 @@ const {
   generateBookingReport,
   generateEarningsReport,
   generateCoachReport,
-  generateClientReport
+  generateUserReport
 } = require('../utils/reportGenerators');
 const { formatResponse } = require('../utils/responseFormatter');
 
@@ -19,13 +19,13 @@ exports.getSummaryReport = async (req, res) => {
     const bookingReport = await generateBookingReport();
     const earningsReport = await generateEarningsReport();
     const coachReport = await generateCoachReport();
-    const clientReport = await generateClientReport();
+    const userReport = await generateUserReport();
 
     const summary = {
       bookings: bookingReport.stats,
       earnings: earningsReport.stats,
       topCoaches: coachReport.coaches.slice(0, 5),
-      topClients: clientReport.clients.slice(0, 5)
+      topUsers: userReport.users.slice(0, 5)
     };
 
     res.json(formatResponse('success', 'Summary report generated', { summary }));
@@ -157,12 +157,12 @@ exports.getCoachPerformanceReport = async (req, res) => {
   }
 };
 
-// Get client analytics
-exports.getClientAnalytics = async (req, res) => {
+// Get user analytics
+exports.getUserAnalytics = async (req, res) => {
   try {
     const { startDate, endDate, filters } = req.query;
-    const report = await generateClientReport(startDate, endDate, filters);
-    res.json(formatResponse('success', 'Client analytics generated', report));
+    const report = await generateUserReport(startDate, endDate, filters);
+    res.json(formatResponse('success', 'User analytics generated', report));
   } catch (error) {
     res.status(500).json(formatResponse('error', error.message));
   }
@@ -182,7 +182,7 @@ exports.getBookingAnalytics = async (req, res) => {
 // Export user report
 exports.exportUserReport = async (req, res) => {
   try {
-    const report = await generateClientReport();
+    const report = await generateUserReport();
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Users');
 
@@ -194,8 +194,8 @@ exports.exportUserReport = async (req, res) => {
       { header: 'Total Spent', key: 'totalSpent', width: 15 }
     ];
 
-    report.clients.forEach(client => {
-      worksheet.addRow(client);
+    report.users.forEach(user => {
+      worksheet.addRow(user);
     });
 
     res.setHeader(
@@ -223,7 +223,7 @@ exports.exportBookingReport = async (req, res) => {
 
     worksheet.columns = [
       { header: 'Date', key: 'date', width: 15 },
-      { header: 'Client', key: 'client', width: 20 },
+      { header: 'User', key: 'user', width: 20 },
       { header: 'Coach', key: 'coach', width: 20 },
       { header: 'Status', key: 'status', width: 15 },
       { header: 'Amount', key: 'amount', width: 15 }
@@ -232,7 +232,7 @@ exports.exportBookingReport = async (req, res) => {
     report.bookings.forEach(booking => {
       worksheet.addRow({
         date: booking.date.toLocaleDateString(),
-        client: booking.client.name,
+        user: booking.user.name,
         coach: booking.coach.name,
         status: booking.status,
         amount: booking.totalAmount
@@ -308,8 +308,8 @@ exports.generateCustomReport = async (req, res) => {
       case 'coaches':
         reportData = await generateCoachReport(startDate, endDate, filters);
         break;
-      case 'clients':
-        reportData = await generateClientReport(startDate, endDate, filters);
+      case 'users':
+        reportData = await generateUserReport(startDate, endDate, filters);
         break;
       default:
         return res.status(400).json(formatResponse('error', 'Invalid report type'));

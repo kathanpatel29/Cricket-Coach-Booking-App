@@ -1,107 +1,168 @@
-import React from "react";
-import { Link } from "react-router-dom";
-import Testimonials from "../components/features/Testimonials";
+import React from 'react';
+import {
+  Box,
+  Container,
+  Typography,
+  Button,
+  Grid,
+  Card,
+  CardContent,
+  CardMedia,
+  Stack,
+  useTheme
+} from '@mui/material';
+import {
+  SportsCricket as CricketIcon,
+  Group as GroupIcon,
+  EmojiEvents as TrophyIcon,
+  LocationOn as LocationIcon
+} from '@mui/icons-material';
+import { Link as RouterLink } from 'react-router-dom';
+import Testimonials from '../components/home/Testimonials';
+import { LOCATION } from '../utils/constants';
+
+const features = [
+  {
+    icon: <CricketIcon sx={{ fontSize: 40 }} />,
+    title: "Expert Coaching",
+    description: "Learn from certified coaches with professional playing experience"
+  },
+  {
+    icon: <GroupIcon sx={{ fontSize: 40 }} />,
+    title: "All Skill Levels",
+    description: "Programs for beginners to advanced players of all ages"
+  },
+  {
+    icon: <TrophyIcon sx={{ fontSize: 40 }} />,
+    title: "Proven Results",
+    description: "Track record of developing successful players at all levels"
+  },
+  {
+    icon: <LocationIcon sx={{ fontSize: 40 }} />,
+    title: "Convenient Locations",
+    description: `Multiple training facilities across the ${LOCATION.region}`
+  }
+];
 
 const Home = () => {
+  const theme = useTheme();
+
   return (
-    <div>
+    <Box>
       {/* Hero Section */}
-      <div className="bg-blue-500 text-white text-center py-20">
-        <div className="max-w-4xl mx-auto px-4">
-          <h1 className="text-4xl md:text-5xl font-bold leading-tight">
-            Elevate Your Cricket Game with Expert Coaching
-          </h1>
-          <p className="mt-6 text-lg md:text-xl">
-            Connect with professional cricket coaches and transform your technique, 
-            fitness, and match performance.
-          </p>
-          <Link to="/register">
-            <button className="mt-8 bg-white text-blue-500 font-semibold px-8 py-3 rounded-lg shadow-md hover:bg-gray-100 transition duration-300">
-              Start Your Journey
-            </button>
-          </Link>
-        </div>
-      </div>
+      <Box
+        sx={{
+          bgcolor: 'primary.main',
+          color: 'primary.contrastText',
+          py: 12,
+          position: 'relative',
+          overflow: 'hidden'
+        }}
+      >
+        <Container maxWidth="lg">
+          <Grid container spacing={4} alignItems="center">
+            <Grid item xs={12} md={6}>
+              <Typography variant="h2" gutterBottom>
+                Master Cricket with Professional Coaching
+              </Typography>
+              <Typography variant="h5" paragraph>
+                Transform your game with personalized training in the {LOCATION.region}
+              </Typography>
+              <Stack direction="row" spacing={2}>
+                <Button
+                  variant="contained"
+                  color="secondary"
+                  size="large"
+                  component={RouterLink}
+                  to="/coaches"
+                >
+                  Find a Coach
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="inherit"
+                  size="large"
+                  component={RouterLink}
+                  to="/about"
+                >
+                  Learn More
+                </Button>
+              </Stack>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Box
+                component="img"
+                src="/images/hero-image.jpg"
+                alt="Cricket Coaching"
+                sx={{
+                  width: '100%',
+                  borderRadius: 2,
+                  boxShadow: 3
+                }}
+              />
+            </Grid>
+          </Grid>
+        </Container>
+      </Box>
 
       {/* Features Section */}
-      <div className="max-w-6xl mx-auto my-16 px-4">
-        <h2 className="text-3xl font-bold text-center mb-12">Why Choose CricCoach?</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="p-6 border rounded-lg shadow-md hover:shadow-lg transition duration-300">
-            <h3 className="font-bold text-xl mb-4">🏏 Expert Coaches</h3>
-            <ul className="space-y-2 text-gray-600">
-              <li>• International and First-Class experience</li>
-              <li>• Certified coaching qualifications</li>
-              <li>• Specialized in batting, bowling, and fielding</li>
-            </ul>
-          </div>
-          <div className="p-6 border rounded-lg shadow-md hover:shadow-lg transition duration-300">
-            <h3 className="font-bold text-xl mb-4">📅 Flexible Training</h3>
-            <ul className="space-y-2 text-gray-600">
-              <li>• Book sessions at your convenience</li>
-              <li>• One-on-one personalized coaching</li>
-              <li>• Indoor and outdoor facilities</li>
-            </ul>
-          </div>
-          <div className="p-6 border rounded-lg shadow-md hover:shadow-lg transition duration-300">
-            <h3 className="font-bold text-xl mb-4">🎯 Comprehensive Training</h3>
-            <ul className="space-y-2 text-gray-600">
-              <li>• Video analysis of technique</li>
-              <li>• Mental conditioning</li>
-              <li>• Match strategy sessions</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      {/* How It Works Section */}
-      <div className="bg-gray-50 py-16">
-        <div className="max-w-6xl mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-12">How It Works</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div className="text-center">
-              <div className="bg-blue-500 text-white w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 text-xl font-bold">1</div>
-              <h3 className="font-bold mb-2">Register</h3>
-              <p className="text-gray-600">Create your free account</p>
-            </div>
-            <div className="text-center">
-              <div className="bg-blue-500 text-white w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 text-xl font-bold">2</div>
-              <h3 className="font-bold mb-2">Choose Coach</h3>
-              <p className="text-gray-600">Browse expert profiles</p>
-            </div>
-            <div className="text-center">
-              <div className="bg-blue-500 text-white w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 text-xl font-bold">3</div>
-              <h3 className="font-bold mb-2">Book Session</h3>
-              <p className="text-gray-600">Select time & location</p>
-            </div>
-            <div className="text-center">
-              <div className="bg-blue-500 text-white w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 text-xl font-bold">4</div>
-              <h3 className="font-bold mb-2">Start Training</h3>
-              <p className="text-gray-600">Begin your improvement journey</p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <Container maxWidth="lg" sx={{ py: 8 }}>
+        <Grid container spacing={4}>
+          {features.map((feature, index) => (
+            <Grid item xs={12} sm={6} md={3} key={index}>
+              <Card 
+                sx={{ 
+                  height: '100%',
+                  textAlign: 'center',
+                  transition: '0.3s',
+                  '&:hover': {
+                    transform: 'translateY(-5px)',
+                    boxShadow: 3
+                  }
+                }}
+              >
+                <CardContent>
+                  <Box sx={{ color: 'primary.main', mb: 2 }}>
+                    {feature.icon}
+                  </Box>
+                  <Typography variant="h6" gutterBottom>
+                    {feature.title}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {feature.description}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      </Container>
 
       {/* Testimonials Section */}
       <Testimonials />
 
       {/* CTA Section */}
-      <div className="bg-blue-500 text-white text-center py-16">
-        <div className="max-w-4xl mx-auto px-4">
-          <h2 className="text-3xl font-bold mb-6">Ready to Improve Your Game?</h2>
-          <p className="text-lg mb-8">
-            Join hundreds of cricketers who have transformed their game with CricCoach
-          </p>
-          <Link to="/register">
-            <button className="bg-white text-blue-500 font-semibold px-8 py-3 rounded-lg shadow-md hover:bg-gray-100 transition duration-300">
-              Get Started Now
-            </button>
-          </Link>
-        </div>
-      </div>
-    </div>
+      <Box sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', py: 8 }}>
+        <Container maxWidth="sm" sx={{ textAlign: 'center' }}>
+          <Typography variant="h4" gutterBottom>
+            Ready to Improve Your Game?
+          </Typography>
+          <Typography variant="subtitle1" paragraph>
+            Join our cricket coaching program today and take your skills to the next level.
+          </Typography>
+          <Button
+            variant="contained"
+            color="secondary"
+            size="large"
+            component={RouterLink}
+            to="/register"
+          >
+            Get Started Now
+          </Button>
+        </Container>
+      </Box>
+    </Box>
   );
 };
 
-export default Home;
+export default Home; 

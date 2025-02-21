@@ -49,6 +49,27 @@ const emergencyOffSchema = new mongoose.Schema({
   }
 });
 
+const availabilitySettingsSchema = new mongoose.Schema({
+  bookingCutoffHours: {
+    type: Number,
+    default: 12,
+    min: 1,
+    max: 72
+  },
+  availabilityDays: {
+    type: Number,
+    default: 30,
+    min: 1,
+    max: 90
+  },
+  defaultSessionDuration: {
+    type: Number,
+    default: 60,
+    min: 30,
+    max: 180
+  }
+});
+
 const coachSchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
@@ -57,7 +78,7 @@ const coachSchema = new mongoose.Schema({
   },
   specializations: [{
     type: String,
-    enum: ['batting', 'bowling', 'fielding', 'wicket-keeping'],
+    enum: VALID_SPECIALIZATIONS,
     required: true
   }],
   experience: {
@@ -109,94 +130,21 @@ const coachSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
-  approvalStatus: {
+  status: {
     type: String,
     enum: ['pending', 'approved', 'rejected'],
     default: 'pending'
   },
-  approvalDate: {
-    type: Date
-  },
-  approvalNotes: {
-    type: String
-  },
-  rejectionReason: {
-    type: String
+  isApproved: {
+    type: Boolean,
+    default: false
   },
   approvedAt: Date,
   approvedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   },
-  documents: [{
-    type: {
-      type: String,
-      enum: ['certification', 'identification', 'other'],
-      required: true
-    },
-    url: {
-      type: String,
-      required: true
-    },
-    name: {
-      type: String,
-      required: true
-    },
-    uploadDate: {
-      type: Date,
-      default: Date.now
-    }
-  }],
-  verificationStatus: {
-    emailVerified: {
-      type: Boolean,
-      default: false
-    },
-    phoneVerified: {
-      type: Boolean,
-      default: false
-    },
-    documentsVerified: {
-      type: Boolean,
-      default: false
-    }
-  },
-  location: String,
-  preferredSessionDuration: {
-    type: Number,
-    default: 60
-  },
-  hasSetAvailability: {
-    type: Boolean,
-    default: false
-  },
-  isProfileComplete: {
-    type: Boolean,
-    default: false
-  },
-  rating: {
-    average: {
-      type: Number,
-      default: 0
-    },
-    count: {
-      type: Number,
-      default: 0
-    }
-  },
-  status: {
-    type: String,
-    enum: ['active', 'inactive', 'pending'],
-    default: 'pending'
-  },
-  isAvailable: {
-    type: Boolean,
-    default: true
-  },
-  isApproved: {
-    type: Boolean,
-    default: false
-  },
+  rejectionReason: String,
   stripeAccountId: {
     type: String,
     sparse: true
@@ -204,6 +152,10 @@ const coachSchema = new mongoose.Schema({
   isStripeEnabled: {
     type: Boolean,
     default: false
+  },
+  availabilitySettings: {
+    type: availabilitySettingsSchema,
+    default: () => ({})
   }
 }, {
   timestamps: true,
@@ -240,20 +192,20 @@ coachSchema.virtual('ratingCount').get(function() {
   return this.ratings.length;
 });
 
-// Index for better query performance
-coachSchema.index({ user: 1 });
-coachSchema.index({ specializations: 1 });
-coachSchema.index({ 'rating.average': -1 });
-coachSchema.index({ status: 1 });
-coachSchema.index({ isApproved: 1 });
-coachSchema.index({ approvalStatus: 1 });
-coachSchema.index({ 'availability.date': 1 });
-
 // Method to check if coach is available for booking
-coachSchema.methods.isAvailableForBooking = function() {
-  return this.isProfileComplete && 
-         this.hasSetAvailability && 
-         this.status === 'active';
+coachSchema.methods.isAvailableForBooking = async function(date, timeSlot) {
+  if (!this.isProfileComplete || !this.hasSetAvailability || this.status !== 'active') {
+    return false;
+  }
+
+  const existingBooking = await TimeSlot.findOne({
+    coach: this._id,
+    date: new Date(date),
+    startTime: timeSlot,
+    status: 'booked'
+  });
+
+  return !existingBooking;
 };
 
 // Method to check if a time slot is available
@@ -265,15 +217,20 @@ coachSchema.methods.isTimeSlotAvailable = function(date, timeSlot) {
 };
 
 // Method to mark a time slot as booked
-coachSchema.methods.markTimeSlotAsBooked = async function(date, timeSlot) {
-  const dayAvailability = this.availability.find(
-    a => a.date.toDateString() === new Date(date).toDateString()
-  );
-  if (dayAvailability) {
-    dayAvailability.slots = dayAvailability.slots.filter(slot => slot !== timeSlot);
-    return await this.save();
+coachSchema.methods.markTimeSlotAsBooked = async function(timeSlotId) {
+  const timeSlot = await TimeSlot.findOne({
+    _id: timeSlotId,
+    coach: this._id,
+    status: 'available'
+  });
+
+  if (!timeSlot) {
+    throw new Error('Time slot not found or already booked');
   }
-  return false;
+
+  timeSlot.status = 'booked';
+  await timeSlot.save();
+  return true;
 };
 
 const Coach = mongoose.model('Coach', coachSchema);

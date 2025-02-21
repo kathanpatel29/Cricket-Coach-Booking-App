@@ -9,62 +9,71 @@ const { sendBookingConfirmation, sendCoachNotification } = require('../utils/ema
 const TimeSlot = require('../models/TimeSlot');
 const Payment = require('../models/Payment');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const { startOfDay, endOfDay } = require('date-fns');
 
 // @desc    Create a new booking
 // @route   POST /api/bookings
-// @access  Private/Client
+// @access  Private/User
 exports.createBooking = catchAsync(async (req, res) => {
-  const { coachId, date, timeSlot, duration } = req.body;
+  const { timeSlotId } = req.body;
 
-  const coach = await Coach.findById(coachId).populate('user', 'isApproved');
-  if (!coach || !coach.user.isApproved) {
-    throw new AppError("Coach not found or not approved", 404);
+  const timeSlot = await TimeSlot.findById(timeSlotId)
+    .populate({
+      path: 'coach',
+      populate: { path: 'user', select: 'isApproved' }
+    });
+
+  if (!timeSlot) {
+    throw new AppError("Time slot not found", 404);
   }
 
-  const isAvailable = await coach.isAvailableForBooking(date, timeSlot);
-  if (!isAvailable) {
-    throw new AppError("Selected time slot is not available", 400);
+  if (!timeSlot.coach.user.isApproved) {
+    throw new AppError("Coach not approved for bookings", 400);
   }
 
-  // Calculate total amount
-  const totalAmount = coach.hourlyRate * duration;
+  if (timeSlot.status !== 'available') {
+    throw new AppError("Time slot is not available", 400);
+  }
+
+  // Validate booking cutoff
+  const now = new Date();
+  const slotDateTime = new Date(timeSlot.date);
+  const [hours, minutes] = timeSlot.startTime.split(':');
+  slotDateTime.setHours(parseInt(hours), parseInt(minutes));
+  const cutoffHours = timeSlot.coach.availabilitySettings?.bookingCutoffHours || 12;
+  
+  if ((slotDateTime - now) / (1000 * 60 * 60) < cutoffHours) {
+    throw new AppError("Booking cutoff time has passed", 400);
+  }
 
   // Create booking
   const booking = await Booking.create({
-    client: req.user.id,
-    coach: coachId,
-    date,
-    timeSlot,
-    duration,
-    totalAmount,
+    user: req.user._id,
+    coach: timeSlot.coach._id,
+    timeSlot: timeSlot._id,
+    date: timeSlot.date,
+    startTime: timeSlot.startTime,
+    endTime: timeSlot.endTime,
+    duration: timeSlot.duration,
     status: 'pending'
   });
 
-  // Update coach's availability
-  await coach.markTimeSlotAsBooked(date, timeSlot);
+  // Update time slot status
+  timeSlot.status = 'booked';
+  timeSlot.booking = booking._id;
+  await timeSlot.save();
 
-  // Send email notifications
-  const user = await User.findById(req.user.id);
-  const bookingDetails = {
-    userName: user.name,
-    coachName: coach.name,
-    date,
-    timeSlot,
-    duration,
-    location: coach.location
-  };
-
-  await sendBookingConfirmation(user.email, bookingDetails);
-  await sendCoachNotification(coach.email, bookingDetails);
-
-  res.status(201).json(formatResponse('success', 'Booking created successfully', booking));
+  res.status(201).json({
+    status: 'success',
+    data: { booking }
+  });
 });
 
-// @desc    Get client's bookings
-// @route   GET /api/bookings/client
-// @access  Private/Client
-exports.getClientBookings = catchAsync(async (req, res) => {
-  const bookings = await Booking.find({ client: req.user._id })
+// @desc    Get user's bookings
+// @route   GET /api/bookings/user
+// @access  Private/User
+exports.getUserBookings = catchAsync(async (req, res) => {
+  const bookings = await Booking.find({ user: req.user._id })
     .populate('coach', 'name email')
     .sort({ date: -1 });
 
@@ -87,7 +96,7 @@ exports.getCoachBookings = catchAsync(async (req, res) => {
   if (date) query.date = { $gte: new Date(date) };
 
   const bookings = await Booking.find(query)
-    .populate("client", "name email")
+    .populate("user", "name email")
     .sort({ date: -1 })
     .skip((page - 1) * limit)
     .limit(limit);
@@ -109,7 +118,7 @@ exports.getCoachBookings = catchAsync(async (req, res) => {
 // @access  Private
 exports.getBookingById = catchAsync(async (req, res) => {
   const booking = await Booking.findById(req.params.id)
-    .populate("client", "name email")
+    .populate("user", "name email")
     .populate("coach", "user specializations hourlyRate");
 
   if (!booking) {
@@ -147,7 +156,7 @@ exports.updateBookingStatus = catchAsync(async (req, res) => {
 
 // @desc    Reschedule booking
 // @route   PATCH /api/bookings/reschedule/:id
-// @access  Private/Client
+// @access  Private/User
 exports.rescheduleBooking = catchAsync(async (req, res) => {
   const { newDate, newTimeSlot } = req.body;
   const booking = await Booking.findById(req.params.id);
@@ -166,7 +175,7 @@ exports.rescheduleBooking = catchAsync(async (req, res) => {
 
 // @desc    Cancel booking
 // @route   PATCH /api/bookings/cancel/:id
-// @access  Private/Client
+// @access  Private/User
 exports.cancelBooking = catchAsync(async (req, res) => {
   const booking = await Booking.findById(req.params.id);
   
@@ -174,13 +183,13 @@ exports.cancelBooking = catchAsync(async (req, res) => {
     throw new AppError("Booking not found", 404);
   }
 
-  // Verify the client owns this booking
-  if (booking.client.toString() !== req.user.id) {
+  // Verify the user owns this booking
+  if (booking.user.toString() !== req.user.id) {
     throw new AppError("You are not authorized to cancel this booking", 403);
   }
 
   booking.status = 'cancelled';
-  booking.cancellationReason = req.body.reason || 'Cancelled by client';
+  booking.cancellationReason = req.body.reason || 'Cancelled by user';
   booking.cancellationDate = new Date();
   booking.cancelledBy = req.user.id;
   await booking.save();
@@ -191,54 +200,47 @@ exports.cancelBooking = catchAsync(async (req, res) => {
 // @desc    Get available slots for a coach
 // @route   GET /api/bookings/slots/:coachId
 // @access  Public
-exports.getAvailableSlots = async (req, res) => {
-  try {
-    const { coachId } = req.params;
-    const { date } = req.query;
+exports.getAvailableSlots = catchAsync(async (req, res) => {
+  const { coachId } = req.params;
+  const { date } = req.query;
 
-    if (!date) {
-      return res.status(400).json(formatResponse('error', 'Date parameter is required'));
-    }
-
-    const coach = await Coach.findById(coachId)
-      .populate('user', 'isApproved');
-
-    if (!coach) {
-      return res.status(404).json(formatResponse('error', 'Coach not found'));
-    }
-
-    if (!coach.user?.isApproved) {
-      return res.status(400).json(formatResponse('error', 'Coach is not approved for bookings'));
-    }
-
-    // Get schedule for the requested date
-    const schedule = coach.schedule?.find(s => 
-      new Date(s.date).toDateString() === new Date(date).toDateString()
-    );
-
-    if (!schedule) {
-      return res.json(formatResponse('success', 'No slots available for this date', []));
-    }
-
-    // Get existing bookings for that date
-    const existingBookings = await Booking.find({
-      coach: coachId,
-      date: {
-        $gte: new Date(date).setHours(0,0,0,0),
-        $lt: new Date(date).setHours(23,59,59,999)
-      },
-      status: { $nin: ['cancelled', 'rejected'] }
-    });
-
-    // Filter out booked slots
-    const bookedSlots = existingBookings.map(booking => booking.timeSlot);
-    const availableSlots = schedule.slots.filter(slot => !bookedSlots.includes(slot));
-
-    res.json(formatResponse('success', 'Available slots retrieved successfully', availableSlots));
-  } catch (error) {
-    res.status(500).json(formatResponse('error', 'Error fetching available slots'));
+  if (!date) {
+    throw new AppError('Date parameter is required', 400);
   }
-};
+
+  const searchDate = new Date(date);
+  const startOfDayDate = startOfDay(searchDate);
+  const endOfDayDate = endOfDay(searchDate);
+
+  // Get coach and validate approval status
+  const coach = await Coach.findById(coachId).populate('user', 'isApproved');
+  if (!coach || !coach.user?.isApproved) {
+    throw new AppError('Coach not found or not approved', 404);
+  }
+
+  // Get available time slots with efficient query
+  const availableSlots = await TimeSlot.find({
+    coach: coachId,
+    date: {
+      $gte: startOfDayDate,
+      $lte: endOfDayDate
+    },
+    status: 'available'
+  }).sort('startTime');
+
+  // Apply booking cutoff filter
+  const now = new Date();
+  const cutoffHours = coach.availabilitySettings?.bookingCutoffHours || 12;
+  
+  const filteredSlots = availableSlots.filter(slot => {
+    const slotDateTime = new Date(slot.date);
+    const [hours, minutes] = slot.startTime.split(':');
+    slotDateTime.setHours(parseInt(hours), parseInt(minutes));
+    return (slotDateTime - now) / (1000 * 60 * 60) >= cutoffHours;
+  });
+
+  res.json(formatResponse('success', 'Available slots retrieved successfully', filteredSlots));
+});
 
 // Helper function to validate status transitions
 exports.isValidStatusTransition = function(currentStatus, newStatus) {
@@ -279,13 +281,13 @@ exports.initiateBooking = catchAsync(async (req, res) => {
     metadata: {
       timeSlotId,
       coachId: timeSlot.coach._id.toString(),
-      clientId: req.user.id
+      userId: req.user.id
     }
   });
   
   // Create booking
   const booking = await Booking.create({
-    client: req.user.id,
+    user: req.user.id,
     coach: timeSlot.coach._id,
     timeSlot: timeSlot._id,
     duration,
@@ -298,7 +300,7 @@ exports.initiateBooking = catchAsync(async (req, res) => {
     booking: booking._id,
     amount,
     stripePaymentIntentId: paymentIntent.id,
-    stripeClientSecret: paymentIntent.client_secret
+    stripeUserSecret: paymentIntent.user_secret
   });
   
   // Update time slot status
@@ -310,7 +312,7 @@ exports.initiateBooking = catchAsync(async (req, res) => {
     status: 'success',
     data: {
       booking,
-      clientSecret: paymentIntent.client_secret
+      userSecret: paymentIntent.user_secret
     }
   });
 });

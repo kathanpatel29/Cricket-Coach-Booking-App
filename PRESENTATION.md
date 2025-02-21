@@ -60,7 +60,7 @@ A full-stack web application that connects cricket enthusiasts with professional
   name: String,
   email: String,
   password: String,
-  role: Enum['client', 'coach', 'admin'],
+  role: Enum['user', 'coach', 'admin'],
   createdAt: Date
 }
 ```
@@ -81,7 +81,7 @@ A full-stack web application that connects cricket enthusiasts with professional
 ```javascript
 {
   _id: ObjectId,
-  clientId: ObjectId,
+  userId: ObjectId,
   coachId: ObjectId,
   date: Date,
   timeSlot: String,
@@ -203,7 +203,7 @@ A full-stack web application that connects cricket enthusiasts with professional
 Live Demo: [https://cric-coach-app.vercel.app](https://cric-coach-app.vercel.app)
 
 ### Test Credentials
-- Client: client@test.com / Test@123
+- User: user@test.com / Test@123
 - Coach: coach@test.com / Test@123
 - Admin: admin@test.com / Test@123
 

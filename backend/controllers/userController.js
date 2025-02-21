@@ -1,7 +1,6 @@
 const User = require("../models/User");
 const Coach = require("../models/Coach");
 const Booking = require("../models/Booking");
-const UserDeletionLog = require("../models/UserDeletionLog");
 const { AppError, catchAsync } = require("../utils/errorHandler");
 const { successResponse, formatResponse } = require("../utils/responseFormatter");
 const { deleteOldProfileImage } = require('../utils/imageUpload');
@@ -15,7 +14,7 @@ exports.getAllUsers = catchAsync(async (req, res) => {
 
 // Get user by ID (admin only)
 exports.getUserById = catchAsync(async (req, res) => {
-  const user = await User.findById(req.params.id).select('-password');
+ const user = await User.findById(req.params.id).select('-password');
   if (!user) {
     throw new AppError('User not found', 404);
   }
@@ -74,7 +73,7 @@ exports.deleteUser = catchAsync(async (req, res) => {
 // Get dashboard stats (admin only)
 exports.getDashboardStats = catchAsync(async (req, res) => {
   const stats = await Booking.aggregate([
-    { $match: { client: mongoose.Types.ObjectId(req.user.id) } },
+    { $match: { user: mongoose.Types.ObjectId(req.user.id) } },
     {
       $group: {
         _id: null,
@@ -228,42 +227,47 @@ exports.searchUsers = catchAsync(async (req, res) => {
 });
 
 // Get current user profile
-exports.getCurrentUserProfile = async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id).select('-password');
-    res.json(formatResponse('success', 'User profile retrieved successfully', { user }));
-  } catch (error) {
-    res.status(500).json(formatResponse('error', error.message));
+exports.getCurrentUserProfile = catchAsync(async (req, res) => {
+  console.log('User ID from request:', req.user.id);
+  
+  const user = await User.findById(req.user.id).select('-password');
+  console.log('Found user:', user);
+  
+  if (!user) {
+    throw new AppError('User not found', 404);
   }
-};
+  
+  successResponse(res, 200, { user });
+});
 
 // Update current user profile
-exports.updateCurrentUserProfile = async (req, res) => {
-  try {
-    const updates = { ...req.body };
-    delete updates.password; // Password updates handled separately
-    delete updates.role; // Role cannot be updated here
-
-    // Handle profile image upload
-    if (req.file) {
-      // Delete old profile image if it exists and is not the default
-      if (req.user.profileImage) {
-        deleteOldProfileImage(req.user.profileImage);
-      }
-      updates.profileImage = req.file.path;
-    }
-
-    const user = await User.findByIdAndUpdate(
-      req.user.id,
-      updates,
-      { new: true, runValidators: true }
-    ).select('-password');
-
-    res.json(formatResponse('success', 'Profile updated successfully', { user }));
-  } catch (error) {
-    res.status(500).json(formatResponse('error', error.message));
+exports.updateCurrentUserProfile = catchAsync(async (req, res) => {
+  const { name, email, phone } = req.body;
+  
+  // Check if user exists
+  const user = await User.findById(req.user.id);
+  if (!user) {
+    throw new AppError('User not found', 404);
   }
-};
+
+  // Check email uniqueness if email is being updated
+  if (email && email !== user.email) {
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      throw new AppError('Email already in use', 400);
+    }
+  }
+
+  // Update basic user fields
+  user.name = name || user.name;
+  user.email = email || user.email;
+  user.phone = phone || user.phone;
+
+  const updatedUser = await user.save();
+  updatedUser.password = undefined;
+
+  successResponse(res, 200, { user: updatedUser }, 'Profile updated successfully');
+});
 
 // Delete current user account
 exports.deleteCurrentUserAccount = async (req, res) => {
@@ -308,3 +312,126 @@ exports.changePassword = async (req, res) => {
     res.status(500).json(formatResponse('error', error.message));
   }
 };
+
+exports.updateCriticalInfo = catchAsync(async (req, res) => {
+  const { name, email, password } = req.body;
+
+  // Find user and verify password
+  const user = await User.findById(req.user.id).select('+password');
+  if (!user) {
+    throw new AppError('User not found', 404);
+  }
+
+  // Verify password
+  const isPasswordCorrect = await user.comparePassword(password);
+  if (!isPasswordCorrect) {
+    throw new AppError('Incorrect password', 401);
+  }
+
+  // Check email uniqueness if email is being updated
+  if (email !== user.email) {
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      throw new AppError('Email already in use', 400);
+    }
+  }
+
+  // Update user
+  user.name = name;
+  user.email = email;
+  await user.save();
+
+  // Return success but require re-login
+  successResponse(res, 200, null, 'Profile updated successfully. Please log in again.');
+});
+
+exports.getBookings = catchAsync(async (req, res) => {
+  const bookings = await Booking.find({ user: req.user.id })
+    .populate('coach', 'name')
+    .populate('timeSlot', 'date startTime');
+
+  successResponse(res, 200, { bookings });
+});
+
+exports.getReviews = catchAsync(async (req, res) => {
+  const reviews = await Review.find({ user: req.user.id })
+    .populate('coach', 'name');
+
+  successResponse(res, 200, { reviews });
+});
+
+exports.getPayments = catchAsync(async (req, res) => {
+  const payments = await Payment.find({ user: req.user.id });
+
+  successResponse(res, 200, { payments });
+}); 
+
+exports.getProfile = catchAsync(async (req, res) => {
+  const user = await User.findById(req.user.id).select('-password');
+
+  successResponse(res, 200, { user });
+});
+
+exports.updateProfile = catchAsync(async (req, res) => {
+  const { name, email, phone } = req.body;
+
+  const user = await User.findById(req.user.id);
+
+  if (!user) {
+    throw new AppError('User not found', 404);
+  }
+
+  user.name = name || user.name;
+  user.email = email || user.email;
+
+  await user.save();
+
+  successResponse(res, 200, { user }, 'Profile updated successfully');
+});
+
+exports.updatePhone = catchAsync(async (req, res) => {
+  const { phone } = req.body;
+
+  const user = await User.findById(req.user.id);
+
+  if (!user) {
+    throw new AppError('User not found', 404);
+  }
+
+  user.phone = phone; 
+
+  await user.save();
+
+  successResponse(res, 200, { user }, 'Phone number updated successfully');
+});
+
+exports.updateProfileImage = catchAsync(async (req, res) => {
+  const { profileImage } = req.body;
+
+  const user = await User.findById(req.user.id);  
+
+  if (!user) {
+    throw new AppError('User not found', 404);
+  }
+
+  user.profileImage = profileImage; 
+
+  await user.save();
+
+  successResponse(res, 200, { user }, 'Profile image updated successfully');
+});   
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+

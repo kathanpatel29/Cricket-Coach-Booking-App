@@ -10,17 +10,20 @@ router.get("/slots/:coachId", bookingController.getAvailableSlots);
 // Protected routes
 router.use(protect);
 
-// Client routes
-router.get("/client", authorize("client"), bookingController.getClientBookings);
-router.post("/", authorize("client"), validate(bookingValidation), bookingController.createBooking);
-router.post("/:id/cancel", authorize("client"), bookingController.cancelBooking);
+// Routes for all authenticated users
+router.post('/', bookingController.createBooking);
+router.get('/:id', bookingController.getBookingById);
 
-// Coach routes
-router.get("/coach", authorize("coach"), bookingController.getCoachBookings);
-router.patch("/:id/status", authorize("coach"), bookingController.updateBookingStatus);
+// User-specific routes
+router.get('/user', authorize('user'), bookingController.getUserBookings);
+router.put('/:id/cancel', authorize('user'), bookingController.cancelBooking);
+
+// Coach-specific routes
+router.get('/coach', authorize('coach'), bookingController.getCoachBookings);
+router.put('/:id/confirm', authorize('coach'), bookingController.confirmBooking);
+router.put('/:id/reschedule', authorize('coach'), bookingController.rescheduleBooking);
 
 // Admin routes
 router.get("/", authorize("admin"), adminController.getAllBookings);
-router.get("/:id", authorize("admin"), bookingController.getBookingById);
 
 module.exports = router;

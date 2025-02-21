@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const availabilitySchema = new mongoose.Schema({
   coach: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    ref: 'Coach',
     required: true
   },
   date: {
@@ -18,18 +18,23 @@ const availabilitySchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  duration: {
+    type: Number,
+    required: true
+  },
   isBooked: {
     type: Boolean,
     default: false
+  },
+  bookingCutoffHours: {
+    type: Number,
+    required: true
   }
 }, {
   timestamps: true
 });
 
-// Compound index to prevent duplicate slots
-availabilitySchema.index({ coach: 1, date: 1, startTime: 1, endTime: 1 }, { unique: true });
-
-// Validate time format
+// Validate time format and booking rules
 availabilitySchema.pre('save', function(next) {
   const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
   

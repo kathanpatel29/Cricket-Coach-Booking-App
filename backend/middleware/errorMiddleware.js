@@ -1,12 +1,35 @@
 const { AppError } = require('../utils/errorHandler');
 
-const errorHandler = (err, req, res, next) => {
-  const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
-  
-  res.status(statusCode).json({
-    message: err.message,
-    stack: process.env.NODE_ENV === 'production' ? null : err.stack,
-  });
+const errorMiddleware = (err, req, res, next) => {
+  err.statusCode = err.statusCode || 500;
+  err.status = err.status || 'error';
+
+  if (process.env.NODE_ENV === 'development') {
+    sendErrorDev(err, res);
+  } else {
+    let error = { ...err };
+    error.message = err.message;
+
+    // Mongoose duplicate key
+    if (error.code === 11000) {
+      error = handleDuplicateFieldsDB(error);
+    }
+
+    // Mongoose validation error
+    if (error.name === 'ValidationError') {
+      error = handleValidationErrorDB(error);
+    }
+
+    // JWT errors
+    if (error.name === 'JsonWebTokenError') {
+      error = handleJWTError();
+    }
+    if (error.name === 'TokenExpiredError') {
+      error = handleJWTExpiredError();
+    }
+
+    sendErrorProd(error, res);
+  }
 };
 
 const notFound = (req, res, next) => {
@@ -25,23 +48,21 @@ const sendErrorDev = (err, res) => {
 };
 
 const sendErrorProd = (err, res) => {
+  // Operational, trusted error: send message to user
   if (err.isOperational) {
     res.status(err.statusCode).json({
       status: err.status,
       message: err.message
     });
-  } else {
+  } 
+  // Programming or other unknown error: don't leak error details
+  else {
     console.error('ERROR 💥', err);
     res.status(500).json({
       status: 'error',
-      message: 'Something went wrong!'
+      message: 'Something went wrong'
     });
   }
-};
-
-const handleCastErrorDB = err => {
-  const message = `Invalid ${err.path}: ${err.value}`;
-  return new AppError(message, 400);
 };
 
 const handleDuplicateFieldsDB = err => {
@@ -62,14 +83,4 @@ const handleJWTError = () =>
 const handleJWTExpiredError = () =>
   new AppError('Your token has expired! Please log in again.', 401);
 
-module.exports = {
-  errorHandler,
-  notFound,
-  sendErrorDev,
-  sendErrorProd,
-  handleCastErrorDB,
-  handleDuplicateFieldsDB,
-  handleValidationErrorDB,
-  handleJWTError,
-  handleJWTExpiredError
-};
+module.exports = errorMiddleware;

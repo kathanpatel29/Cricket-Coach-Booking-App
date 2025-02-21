@@ -24,7 +24,7 @@ const paymentSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  stripeClientSecret: {
+  stripeUserSecret: {
     type: String,
     required: true
   },
@@ -38,10 +38,6 @@ const paymentSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Indexes for better query performance
-paymentSchema.index({ booking: 1 });
-paymentSchema.index({ status: 1 });
-paymentSchema.index({ stripePaymentIntentId: 1 });
 
 const Payment = mongoose.model('Payment', paymentSchema);
 

@@ -17,7 +17,7 @@ router.get("/revenue-stats", reportController.getRevenueStats);
 
 // Analytics reports
 router.get("/coach-performance", reportController.getCoachPerformanceReport);
-router.get("/client-analytics", reportController.getClientAnalytics);
+router.get("/user-analytics", reportController.getUserAnalytics);
 router.get("/booking-analytics", reportController.getBookingAnalytics);
 
 // Export reports

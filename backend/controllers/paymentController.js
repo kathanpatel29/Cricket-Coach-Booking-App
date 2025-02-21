@@ -23,7 +23,7 @@ exports.createPaymentIntent = catchAsync(async (req, res) => {
     metadata: { 
       bookingId: booking._id.toString(),
       coachId: booking.coach._id.toString(),
-      clientId: booking.client.toString()
+      userId: booking.user.toString()
     }
   });
 
@@ -33,7 +33,7 @@ exports.createPaymentIntent = catchAsync(async (req, res) => {
   res.json({
     status: 'success',
     data: {
-      clientSecret: paymentIntent.client_secret
+      userSecret: paymentIntent.user_secret
     }
   });
 });
@@ -57,7 +57,7 @@ exports.confirmPayment = catchAsync(async (req, res) => {
 });
 
 exports.getPaymentHistory = catchAsync(async (req, res) => {
-  const payments = await Payment.find({ client: req.user._id })
+  const payments = await Payment.find({ user: req.user._id })
     .populate({
       path: 'booking',
       select: 'date timeSlot duration'
@@ -202,7 +202,7 @@ exports.getCoachEarnings = catchAsync(async (req, res) => {
   const recentTransactions = await Payment.find({
     coach: new mongoose.Types.ObjectId(req.user._id)
   })
-    .populate('client', 'name')
+    .populate('user', 'name')
     .populate('booking', 'sessionType')
     .sort({ createdAt: -1 })
     .limit(10)
@@ -212,8 +212,8 @@ exports.getCoachEarnings = catchAsync(async (req, res) => {
   const formattedTransactions = recentTransactions.map(transaction => ({
     _id: transaction._id,
     date: transaction.createdAt,
-    client: {
-      name: transaction.client?.name || 'Unknown Client'
+    user: {
+      name: transaction.user?.name || 'Unknown User'
     },
     sessionType: transaction.booking?.sessionType || 'Unknown Session',
     amount: transaction.coachPayout,
@@ -339,7 +339,7 @@ exports.requestRefund = catchAsync(async (req, res) => {
     throw new AppError("Payment not found", 404);
   }
 
-  if (payment.client.toString() !== req.user.id) {
+  if (payment.user.toString() !== req.user.id) {
     throw new AppError("Unauthorized access to payment", 403);
   }
 
@@ -383,7 +383,7 @@ exports.processRefundAdmin = catchAsync(async (req, res) => {
 
 exports.getAllTransactions = catchAsync(async (req, res) => {
   const bookings = await Booking.find({ paymentStatus: { $ne: 'pending' } })
-    .populate('client', 'name email')
+    .populate('user', 'name email')
     .populate('coach', 'name email')
     .sort('-paymentDetails.paidAt');
 
@@ -392,7 +392,7 @@ exports.getAllTransactions = catchAsync(async (req, res) => {
     amount: booking.paymentDetails?.amount,
     status: booking.paymentStatus,
     paidAt: booking.paymentDetails?.paidAt,
-    client: booking.client,
+    user: booking.user,
     coach: booking.coach,
     refundStatus: booking.refundRequest?.status
   }));
@@ -401,14 +401,26 @@ exports.getAllTransactions = catchAsync(async (req, res) => {
 });
 
 exports.getAllPayments = catchAsync(async (req, res) => {
-  const payments = await Payment.find()
-    .populate('booking')
-    .populate('client', 'name email')
-    .populate('coach', 'name email')
-    .sort('-createdAt');
+  let query = {};
 
-  successResponse(res, 200, { payments });
+  // If the user is not an admin, they can only see their own payments
+  if (req.user.role === "user") {
+      query.user = req.user._id; // Users only see their own payments
+  } else if (req.user.role === "coach") {
+      query.coach = req.user._id; // Coaches see only payments related to them
+  }
+
+  const payments = await Payment.find(query)
+      .populate("user", "name email")
+      .populate("coach", "name email")
+      .sort("-createdAt");
+
+  res.status(200).json({
+      status: "success",
+      data: { payments }
+  });
 });
+
 
 exports.processRefund = catchAsync(async (req, res) => {
   const { paymentId } = req.params;

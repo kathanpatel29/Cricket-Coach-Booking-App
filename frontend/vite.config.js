@@ -45,14 +45,13 @@ export default defineConfig(({ mode }) => {
       strictPort: false,
       host: true,
       open: true,
-      proxy: mode === 'development' ? {
+      proxy: {
         '/api': {
           target: 'http://localhost:5000',
           changeOrigin: true,
           secure: false,
-          rewrite: (path) => path.replace(/^\/api/, '/api')
         }
-      } : undefined
+      }
     },
     preview: {
       port: 3000,

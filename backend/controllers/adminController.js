@@ -178,7 +178,7 @@ exports.getAllCoaches = async (req, res) => {
 // Booking Management
 exports.getAllBookings = catchAsync(async (req, res) => {
   const bookings = await Booking.find()
-    .populate('client', 'name email')
+    .populate('user', 'name email')
     .populate('coach', 'name email')
     .sort('-createdAt');
 
@@ -207,7 +207,7 @@ exports.updateBooking = catchAsync(async (req, res) => {
 // Review Moderation
 exports.getPendingReviews = catchAsync(async (req, res) => {
   const reviews = await Review.find({ status: 'pending' })
-    .populate('client', 'name email')
+    .populate('user', 'name email')
     .populate('coach', 'name email')
     .sort('-createdAt');
 
@@ -235,74 +235,22 @@ exports.moderateReview = catchAsync(async (req, res) => {
 });
 
 // Dashboard Stats
-exports.getDashboardStats = async (req, res) => {
-  try {
-    // Get counts from different collections
-    const [
+exports.getDashboardStats = catchAsync(async (req, res) => {
+  const totalUsers = await User.countDocuments();
+  const totalBookings = await Booking.countDocuments();
+  const totalRevenue = await Payment.aggregate([
+    { $group: { _id: null, total: { $sum: '$amount' } } }
+  ]);
+  
+  res.json({
+    status: 'success',
+    data: {
       totalUsers,
-      totalCoaches,
-      pendingCoaches,
       totalBookings,
-      pendingReviews,
-      totalRevenue
-    ] = await Promise.all([
-      User.countDocuments(),
-      Coach.countDocuments({ isApproved: true }),
-      Coach.countDocuments({ isApproved: false, status: 'pending' }),
-      Booking.countDocuments(),
-      Review.countDocuments({ status: 'pending' }),
-      Payment.aggregate([
-        {
-          $group: {
-            _id: null,
-            total: { $sum: '$amount' }
-          }
-        }
-      ])
-    ]);
-
-    // Calculate recent stats
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    const [
-      newUsers,
-      newBookings,
-      recentRevenue
-    ] = await Promise.all([
-      User.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
-      Booking.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
-      Payment.aggregate([
-        {
-          $match: { createdAt: { $gte: thirtyDaysAgo } }
-        },
-        {
-          $group: {
-            _id: null,
-            total: { $sum: '$amount' }
-          }
-        }
-      ])
-    ]);
-
-    res.json(formatResponse('success', 'Dashboard stats retrieved successfully', {
-      stats: {
-        totalUsers,
-        totalCoaches,
-        pendingCoaches,
-        totalBookings,
-        pendingReviews,
-        totalRevenue: totalRevenue[0]?.total || 0,
-        newUsers,
-        newBookings,
-        recentRevenue: recentRevenue[0]?.total || 0
-      }
-    }));
-  } catch (error) {
-    console.error('Dashboard stats error:', error);
-    res.status(500).json(formatResponse('error', 'Error fetching dashboard stats'));
-  }
-};
+      totalRevenue: totalRevenue[0]?.total || 0
+    }
+  });
+});
 
 // Reports
 exports.getUserStats = catchAsync(async (req, res) => {
@@ -424,7 +372,7 @@ exports.exportUsers = catchAsync(async (req, res) => {
 
 exports.exportBookings = catchAsync(async (req, res) => {
   const bookings = await Booking.find()
-    .populate('client', 'name email')
+    .populate('user', 'name email')
     .populate('coach', 'name email');
 
   const workbook = new ExcelJS.Workbook();
@@ -432,7 +380,7 @@ exports.exportBookings = catchAsync(async (req, res) => {
 
   worksheet.columns = [
     { header: 'Date', key: 'date' },
-    { header: 'Client', key: 'client' },
+    { header: 'User', key: 'user' },
     { header: 'Coach', key: 'coach' },
     { header: 'Status', key: 'status' },
     { header: 'Amount', key: 'amount' }
@@ -441,7 +389,7 @@ exports.exportBookings = catchAsync(async (req, res) => {
   bookings.forEach(booking => {
     worksheet.addRow({
       date: booking.date.toLocaleDateString(),
-      client: booking.client.name,
+      user: booking.user.name,
       coach: booking.coach.name,
       status: booking.status,
       amount: booking.totalAmount
@@ -498,6 +446,40 @@ exports.exportRevenue = catchAsync(async (req, res) => {
 
   await workbook.xlsx.write(res);
   res.end();
+});
+
+// Get all users
+exports.getUsers = catchAsync(async (req, res) => {
+  const users = await User.find().select('-password');
+  
+  res.json({
+    status: 'success',
+    data: users
+  });
+});
+
+// Get all reviews
+exports.getReviews = catchAsync(async (req, res) => {
+  const reviews = await Review.find()
+    .populate('user', 'name')
+    .populate('coach', 'name');
+  
+  res.json({
+    status: 'success',
+    data: reviews
+  });
+});
+
+// Get all payments
+exports.getPayments = catchAsync(async (req, res) => {
+  const payments = await Payment.find()
+    .populate('user', 'name')
+    .populate('coach', 'name');
+  
+  res.json({
+    status: 'success',
+    data: payments
+  });
 });
 
 // Add other missing functions similarly 

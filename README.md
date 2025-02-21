@@ -28,7 +28,7 @@ Live Demo: [https://cric-coach-app.vercel.app](https://cric-coach-app.vercel.app
 ## Quick Start
 
 1. Visit [https://cric-coach-app.vercel.app](https://cric-coach-app.vercel.app)
-2. Register as a client or coach
+2. Register as a user or coach
 3. Browse available coaches or set up your coaching profile
 4. Book sessions or manage your coaching schedule
 5. Process payments securely through Stripe

@@ -1,49 +1,40 @@
 // Navigation links based on user role
-export const getNavLinks = (role) => {
-  // Public links available to all users
-  const publicLinks = [
-    { to: '/', label: 'Home' },
-    { to: '/coaches', label: 'Find Coaches' },
-    { to: '/about', label: 'About' },
-    { to: '/contact', label: 'Contact' }
-  ];
-
-  // Role-specific links
-  const roleBasedLinks = {
-    client: [
-      { to: '/dashboard', label: 'Dashboard' },
-      { to: '/bookings', label: 'My Bookings' },
-      { to: '/payments', label: 'Payment History' }
-    ],
-    coach: [
-      { to: '/coach/dashboard', label: 'Dashboard' },
-      { to: '/coach/sessions', label: 'Sessions' },
-      { to: '/coach/availability', label: 'Availability' },
-      { to: '/coach/earnings', label: 'Earnings' }
-    ],
-    admin: [
-      { to: '/admin-dashboard', label: 'Dashboard' },
-    ]
-  };
-
-  // Return public links for guests, or public + role-specific links for logged-in users
-  return role ? [...publicLinks, ...(roleBasedLinks[role] || [])] : publicLinks;
+export const getNavLinks = (type) => {
+  switch (type) {
+    case 'admin':
+      return [
+        { path: '/admin', label: 'Dashboard' },
+        { path: '/admin/users', label: 'Users' },
+        { path: '/admin/coaches', label: 'Coach Approvals' },
+        { path: '/admin/bookings', label: 'Bookings' },
+        { path: '/admin/payments', label: 'Payments' },
+        { path: '/admin/profile', label: 'Profile' }
+      ];
+    case 'coach':
+      return [
+        { path: '/coach', label: 'Dashboard' },
+        { path: '/coach/sessions', label: 'Sessions' },
+        { path: '/coach/availability', label: 'Availability' },
+        { path: '/coach/reviews', label: 'Reviews' },
+        { path: '/coach/earnings', label: 'Earnings' },
+        { path: '/coach/profile', label: 'Profile' }
+      ];
+    case 'user':
+    default:
+      return [
+        { path: '/user', label: 'Dashboard' },
+        { path: '/user/book', label: 'Book Session' },
+        { path: '/user/bookings', label: 'My Bookings' },
+        { path: '/user/profile', label: 'Profile' }
+      ];
+  }
 };
 
 // Generate breadcrumbs based on current path
 export const getBreadcrumbs = (pathname) => {
   const paths = pathname.split('/').filter(Boolean);
-  const breadcrumbs = [];
-  let currentPath = '';
-
-  paths.forEach((path, index) => {
-    currentPath += `/${path}`;
-    breadcrumbs.push({
-      label: path.charAt(0).toUpperCase() + path.slice(1).replace(/-/g, ' '),
-      path: currentPath,
-      isLast: index === paths.length - 1
-    });
-  });
-
-  return breadcrumbs;
+  return paths.map((path, index) => ({
+    label: path.charAt(0).toUpperCase() + path.slice(1),
+    path: '/' + paths.slice(0, index + 1).join('/')
+  }));
 }; 

@@ -24,10 +24,10 @@ const processRefund = async (booking) => {
   return refund;
 };
 
-const notifyClient = async (clientId, notification) => {
+const notifyUser = async (userId, notification) => {
   try {
     const newNotification = new Notification({
-      user: clientId,
+      user: userId,
       type: notification.type,
       title: 'Booking Update',
       message: notification.message,
@@ -52,5 +52,5 @@ const notifyClient = async (clientId, notification) => {
 
 module.exports = {
   processRefund,
-  notifyClient
+  notifyUser
 }; 

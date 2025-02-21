@@ -1,102 +1,159 @@
-import { useState, useEffect } from "react";
-import { bookingService } from "../../services/api";
-import { formatDate } from "../../utils/helpers";
-import Alert from "../../components/common/Alert";
-import Loading from "../../components/common/Loading";
+import React, { useState, useEffect } from 'react';
+import {
+  Box,
+  Paper,
+  Typography,
+  Tabs,
+  Tab,
+  Button,
+  CircularProgress,
+  Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField
+} from '@mui/material';
+import { useNavigate } from 'react-router-dom';
+import BookingList from '../../components/bookings/BookingList';
+import { bookingService } from '../../services/api';
+import { toast } from 'react-hot-toast';
 
 const MyBookings = () => {
-  const [bookings, setBookings] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [selectedBooking, setSelectedBooking] = useState(null);
+  const [cancelDialog, setCancelDialog] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
 
-  useEffect(() => {
-    fetchBookings();
-  }, []);
+  const handleTabChange = (event, newValue) => {
+    setActiveTab(newValue);
+  };
 
-  const fetchBookings = async () => {
+  const handleCancelBooking = async () => {
     try {
       setLoading(true);
-      setError("");
-      const response = await bookingService.getUserBookings();
-      if (response?.data?.data?.bookings) {
-        setBookings(response.data.data.bookings);
+      const response = await bookingService.cancelBooking(selectedBooking._id, {
+        reason: cancelReason
+      });
+
+      if (response?.data?.status === 'success') {
+        toast.success('Booking cancelled successfully');
+        setCancelDialog(false);
+        setSelectedBooking(null);
+        setCancelReason('');
+        // Refresh bookings list
+        window.location.reload();
       }
     } catch (err) {
-      console.error('Error fetching bookings:', err);
-      setError(err.response?.data?.message || "Failed to load bookings");
+      setError(err.response?.data?.message || 'Error cancelling booking');
+      toast.error('Failed to cancel booking');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCancelBooking = async (bookingId) => {
-    try {
-      setError("");
-      await bookingService.cancelBooking(bookingId);
-      // Refresh bookings after cancellation
-      fetchBookings();
-    } catch (err) {
-      setError(err.response?.data?.message || "Failed to cancel booking");
+  const handleReviewSubmit = (bookingId) => {
+    navigate(`/user/bookings/${bookingId}/review`);
+  };
+
+  const getStatusLabel = (status) => {
+    switch (status) {
+      case 'upcoming':
+        return 'Upcoming';
+      case 'completed':
+        return 'Past';
+      case 'cancelled':
+        return 'Cancelled';
+      default:
+        return 'All';
     }
   };
 
-  if (loading) return <Loading />;
-
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-6xl mx-auto px-4">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">My Bookings</h1>
+    <Box>
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+          <Typography variant="h5">
+            My Bookings
+          </Typography>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => navigate('/user/book')}
+          >
+            Book New Session
+          </Button>
+        </Box>
 
-        {error && (
-          <Alert 
-            type="error" 
-            message={error}
-            onClose={() => setError("")}
-            className="mb-4"
+        {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
+
+        <Tabs
+          value={activeTab}
+          onChange={handleTabChange}
+          sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}
+        >
+          <Tab label="Upcoming" />
+          <Tab label="Past" />
+          <Tab label="Cancelled" />
+        </Tabs>
+
+        {loading ? (
+          <Box display="flex" justifyContent="center" p={3}>
+            <CircularProgress />
+          </Box>
+        ) : (
+          <BookingList
+            status={getStatusLabel(activeTab).toLowerCase()}
+            onCancelBooking={setSelectedBooking}
+            onReviewSubmit={handleReviewSubmit}
           />
         )}
+      </Paper>
 
-        {bookings.length === 0 ? (
-          <div className="bg-white p-6 rounded-lg shadow text-center">
-            <p className="text-gray-600">No bookings found.</p>
-            <p className="text-sm text-gray-500 mt-2">Book a session with one of our coaches!</p>
-          </div>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2">
-            {bookings.map((booking) => (
-              <div key={booking._id} className="bg-white p-6 rounded-lg shadow">
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <h3 className="font-semibold text-lg">
-                      {booking.coach?.name || 'Coach Name Unavailable'}
-                    </h3>
-                    <p className="text-gray-600">{formatDate(booking.date)}</p>
-                  </div>
-                  <span className={`px-2 py-1 rounded text-sm ${
-                    booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                    booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
-                    {booking.status}
-                  </span>
-                </div>
-                <p className="text-sm text-gray-500">
-                  Duration: {booking.duration} hour{booking.duration > 1 ? 's' : ''}
-                </p>
-                {booking.status === 'pending' && (
-                  <button
-                    onClick={() => handleCancelBooking(booking._id)}
-                    className="mt-3 text-red-600 hover:text-red-800 text-sm font-medium"
-                  >
-                    Cancel Booking
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
+      {/* Cancel Booking Dialog */}
+      <Dialog
+        open={cancelDialog}
+        onClose={() => setCancelDialog(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Cancel Booking</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" paragraph>
+            Are you sure you want to cancel this booking? Please provide a reason:
+          </Typography>
+          <TextField
+            fullWidth
+            multiline
+            rows={3}
+            label="Cancellation Reason"
+            value={cancelReason}
+            onChange={(e) => setCancelReason(e.target.value)}
+            required
+          />
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+            Note: Cancellation policy applies. You may be charged a cancellation fee
+            depending on how close to the session time you are cancelling.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCancelDialog(false)}>
+            Back
+          </Button>
+          <Button
+            onClick={handleCancelBooking}
+            color="error"
+            variant="contained"
+            disabled={!cancelReason.trim()}
+          >
+            Cancel Booking
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
   );
 };
 

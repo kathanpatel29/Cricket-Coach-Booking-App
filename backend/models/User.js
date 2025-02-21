@@ -1,67 +1,97 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 
 const userSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: [true, 'Please provide your name'],
-    trim: true
-  },
+
+name: {
+  type: String,
+  required: [true, 'Name is required'],
+  trim: true
+},
+
   email: {
     type: String,
-    required: [true, 'Please provide your email'],
+    required: [true, 'Email is required'],
     unique: true,
     lowercase: true,
-    trim: true
+    trim: true,
+    validate: {
+      validator: function(v) {
+        return /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/.test(v);
+      },
+      message: 'Please enter a valid email'
+    }
   },
   password: {
     type: String,
-    required: [true, 'Please provide a password'],
-    minlength: 6,
+    required: [true, 'Password is required'],
     select: false
   },
+
   role: {
     type: String,
-    enum: ['client', 'coach', 'admin'],
-    default: 'client'
+    enum: ['user', 'coach', 'admin'],
+    default: 'user'
   },
-  profileImage: {
+  phoneNumber: {
     type: String,
-    default: 'uploads/profile-images/default-avatar.svg'
+    validate: {
+      validator: function(v) {
+        return /^\+?[\d\s-]{10,}$/.test(v);
+      },
+      message: 'Please enter a valid phone number'
+    }
   },
-  isActive: {
+  isEmailVerified: {
     type: Boolean,
-    default: true
+    default: false
   },
-  isApproved: {
-    type: Boolean,
-    default: true
-  },
-  approvalDate: Date,
-  approvedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  },
-  rejectionReason: String,
-  passwordChangedAt: Date,
+  emailVerificationToken: String,
+  emailVerificationExpires: Date,
+  resetPasswordToken: String,
+  resetPasswordExpires: Date,
   lastLogin: Date,
-  statusUpdatedAt: Date,
-  statusUpdatedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
+  loginAttempts: {
+    type: Number,
+    default: 0
+  },
+  lockUntil: Date,
+  preferences: {
+    timezone: {
+      type: String,
+      default: 'UTC'
+    },
+    notifications: {
+      email: {
+        type: Boolean,
+        default: true
+      },
+      sms: {
+        type: Boolean,
+        default: false
+      }
+    },
+    language: {
+      type: String,
+      default: 'en'
+    }
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
 });
+
+// Virtual for full name is no longer needed since we use a single name field
 
 // Password hashing middleware
 userSchema.pre('save', async function(next) {
+  if (!this.isModified('password')) return next();
+  
   try {
-    // Only hash password if it's modified or new
-    if (!this.isModified('password')) return next();
-
-    // Generate salt and hash password
-    const salt = await bcrypt.genSalt(12);
+    const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
     next();
   } catch (error) {
@@ -69,12 +99,19 @@ userSchema.pre('save', async function(next) {
   }
 });
 
-// Compare password method
-userSchema.methods.comparePassword = function(candidatePassword) {
-  return bcrypt.compare(candidatePassword, this.password);
+// Methods
+userSchema.methods.comparePassword = async function(candidatePassword) {
+  return await bcrypt.compare(candidatePassword, this.password);
 };
 
-//Prevent Mongoose from recompiling the model
-const User = mongoose.models.User || mongoose.model('User', userSchema);
+userSchema.methods.generateAuthToken = function() {
+  return jwt.sign(
+    { id: this._id },
+    process.env.JWT_SECRET_KEY,
+    { expiresIn: '24h' }
+  );
+};
+
+const User = mongoose.model('User', userSchema);
 
 module.exports = User;

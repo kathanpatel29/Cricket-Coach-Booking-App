@@ -2,467 +2,461 @@ import React, { useState, useEffect } from 'react';
 import {
   Box,
   Container,
-  Paper,
   Typography,
+  Paper,
   Grid,
   TextField,
   Button,
   Avatar,
+  CircularProgress,
+  Alert,
+  Divider,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Chip,
+  Stack,
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions,
-  Alert,
-  CircularProgress,
-  Chip,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  OutlinedInput
+  DialogContentText,
+  DialogActions
 } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { userService } from '../../services/api';
+import { toast } from 'react-hot-toast';
+import { authService } from '../../services/api';
 
-// Available specializations
+
 const SPECIALIZATIONS = ['batting', 'bowling', 'fielding', 'wicket-keeping'];
 
 const Profile = () => {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  const { user, getProfile, updateUserProfile, logout } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [profile, setProfile] = useState(null);
-  const [deleteDialog, setDeleteDialog] = useState(false);
-  const [deleteConfirmation, setDeleteConfirmation] = useState('');
-  const [imagePreview, setImagePreview] = useState(null);
-  const fileInputRef = React.useRef();
-  const [passwordDialog, setPasswordDialog] = useState(false);
+  const [profileData, setProfileData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    // Coach-specific fields
+    ...(user?.role === 'coach' && {
+      bio: '',
+      specializations: [],
+      experience: '',
+      hourlyRate: '',
+      avatar: null
+    })
+  });
+  const [editDialog, setEditDialog] = useState({
+    open: false,
+    field: '',
+    value: '',
+    newValue: ''
+  });
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: '',
     confirmPassword: ''
   });
+  const [criticalUpdateDialog, setCriticalUpdateDialog] = useState({
+    open: false,
+    field: '',
+    data: {
+      name: '',
+      email: '',
+      password: ''
+    }
+  });
 
   useEffect(() => {
-    fetchProfile();
-  }, []);
+    if (!profileData.name) { // Fetch only if profile data is missing
+        fetchProfile();
+    }
+}, [profileData]);
+
 
   const fetchProfile = async () => {
     try {
-      const response = await userService.getProfile();
-      if (response?.data?.data?.user) {
-        setProfile(response.data.data.user);
-      } else {
-        setError('Invalid profile data received');
-      }
-    } catch (error) {
-      setError(error.response?.data?.message || 'Error fetching profile');
+      console.log('Fetching profile...');
+      const response = await authService.getProfile();
+      console.log('API Response:', response.data);
+
+      const userData = response.data.data || response.data;
+      console.log('User Data:', userData);
+      
+      setProfileData({
+        name: userData.name || '',
+        email: userData.email || '',
+        phone: userData.phone || ''
+      });
+    } catch (err) {
+      console.error('Profile fetch error:', err);
+      setError(err.response?.data?.message || 'Error fetching profile');
+      toast.error('Failed to load profile');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleChange = (event) => {
-    const { name, value } = event.target;
-    setProfile(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const handleSpecializationChange = (event) => {
-    const { value } = event.target;
-    setProfile(prev => ({
-      ...prev,
-      specializations: value
-    }));
-  };
-
-  const handleImageChange = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) { // 5MB limit
-        setError('Image size should be less than 5MB');
-        return;
-      }
-      if (!file.type.startsWith('image/')) {
-        setError('Please upload an image file');
-        return;
-      }
-      setImagePreview(URL.createObjectURL(file));
-      setProfile(prev => ({
-        ...prev,
-        newProfileImage: file
-      }));
-    }
-  };
-
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    setError('');
-    setSuccess('');
-    
-    try {
-      const formData = new FormData();
-      Object.keys(profile).forEach(key => {
-        if (key === 'newProfileImage') {
-          formData.append('profileImage', profile[key]);
-        } else if (key === 'specializations' && Array.isArray(profile[key])) {
-          formData.append(key, JSON.stringify(profile[key]));
-        } else if (profile[key] !== null) {
-          formData.append(key, profile[key]);
+  const handleEditClick = (field) => {
+    if (field === 'name' || field === 'email') {
+      setCriticalUpdateDialog({
+        open: true,
+        field,
+        data: {
+          name: profileData.name,
+          email: profileData.email,
+          password: ''
         }
       });
-
-      await userService.updateProfile(formData);
-      setSuccess('Profile updated successfully');
-      
-      // Clean up image preview URL
-      if (imagePreview) {
-        URL.revokeObjectURL(imagePreview);
-        setImagePreview(null);
-      }
-      
-      // Refresh profile to get updated image URL
-      await fetchProfile();
-    } catch (error) {
-      setError(error.response?.data?.message || 'Error updating profile');
+    } else {
+      setEditDialog({
+        open: true,
+        field,
+        value: profileData[field],
+        newValue: profileData[field]
+      });
     }
   };
 
-  const handleDeleteAccount = async () => {
-    if (deleteConfirmation !== 'DELETE') {
-      setError('Please type DELETE to confirm account deletion');
+  const handleDialogChange = (e) => {
+    setEditDialog(prev => ({
+      ...prev,
+      newValue: e.target.value
+    }));
+  };
+
+  const handleConfirmChange = async () => {
+    const { field, newValue } = editDialog;
+    if (newValue.trim() === '') {
+      toast.error(`${field.charAt(0).toUpperCase() + field.slice(1)} cannot be empty`);
       return;
     }
 
     try {
-      await userService.deleteAccount();
-      await logout();
-      navigate('/');
-    } catch (error) {
-      setError(error.response?.data?.message || 'Error deleting account');
+      setSaving(true);
+      await userService.updateProfile({
+        ...profileData,
+        [field]: newValue
+      });
+      setProfileData(prev => ({
+        ...prev,
+        [field]: newValue
+      }));
+      toast.success(`${field.charAt(0).toUpperCase() + field.slice(1)} updated successfully`);
+      setEditDialog({ open: false, field: '', value: '', newValue: '' });
+    } catch (err) {
+      toast.error(err.response?.data?.message || `Failed to update ${field}`);
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handlePasswordChange = (event) => {
-    const { name, value } = event.target;
+  const handleCancelChange = () => {
+    setEditDialog({ open: false, field: '', value: '', newValue: '' });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    setError('');
+    
+    try {
+      const response = await userService.updateProfile(profileData);
+      if (response.data.status === 'success') {
+        updateUserProfile(response.data.data);
+        toast.success('Profile updated successfully');
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Error updating profile');
+      toast.error('Failed to update profile');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handlePasswordChange = (e) => {
+    const { name, value } = e.target;
     setPasswordData(prev => ({
       ...prev,
       [name]: value
     }));
   };
 
-  const handlePasswordSubmit = async () => {
+  const handlePasswordSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+  
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      setError('New passwords do not match');
+      toast.error('New passwords do not match');
       return;
     }
+  
+    setSaving(true);
+    try {
+      const response = await authService.changePassword({
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword,
+      });
+  
+      if (response.data.status === 'success') {
+        toast.success('Password updated successfully');
+        setPasswordData({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        });
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Error updating password');
+    } finally {
+      setSaving(false);
+    }
+  };
+  
 
-    if (passwordData.newPassword.length < 6) {
-      setError('Password must be at least 6 characters long');
+  const handleAvatarChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setProfileData(prev => ({
+        ...prev,
+        avatar: file
+      }));
+    }
+  };
+
+  const handleCriticalUpdateChange = (e) => {
+    const { name, value } = e.target;
+    setCriticalUpdateDialog(prev => ({
+      ...prev,
+      data: {
+        ...prev.data,
+        [name]: value
+      }
+    }));
+  };
+
+  const handleCriticalUpdateSubmit = async () => {
+    const { data } = criticalUpdateDialog;
+    if (!data.name || !data.email || !data.password) {
+      toast.error('All fields are required for this update');
       return;
     }
 
     try {
-      await userService.changePassword({
-        currentPassword: passwordData.currentPassword,
-        newPassword: passwordData.newPassword
-      });
-      setSuccess('Password updated successfully');
-      setPasswordDialog(false);
-      setPasswordData({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: ''
-      });
-    } catch (error) {
-      setError(error.response?.data?.message || 'Error changing password');
+      setSaving(true);
+      await userService.updateCriticalInfo(data);
+      setProfileData(prev => ({
+        ...prev,
+        name: data.name,
+        email: data.email
+      }));
+      toast.success('Profile updated successfully. Please log in again.');
+      setCriticalUpdateDialog({ open: false, field: '', data: { name: '', email: '', password: '' } });
+      // Force re-login after critical update
+      logout();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update profile');
+    } finally {
+      setSaving(false);
     }
   };
 
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
         <CircularProgress />
       </Box>
     );
   }
 
-  if (!profile) {
-    return (
-      <Container maxWidth="md" sx={{ py: 4 }}>
-        <Alert severity="error">Failed to load profile data</Alert>
-      </Container>
-    );
-  }
-
   return (
-    <Container maxWidth="md" sx={{ py: 4 }}>
-      <Paper sx={{ p: 4 }}>
-        <Box display="flex" alignItems="center" mb={4}>
-          <Box position="relative">
-            <Avatar
-              src={imagePreview || profile.profileImage}
-              alt={profile.name}
-              sx={{ 
-                width: 100, 
-                height: 100, 
-                mr: 3,
-                cursor: 'pointer',
-                '&:hover': {
-                  opacity: 0.8
-                }
-              }}
-              onClick={() => fileInputRef.current.click()}
-            />
-            <input
-              type="file"
-              ref={fileInputRef}
-              accept="image/*"
-              style={{ display: 'none' }}
-              onChange={handleImageChange}
-            />
-            <Typography
-              variant="caption"
-              sx={{
-                position: 'absolute',
-                bottom: -20,
-                left: '50%',
-                transform: 'translateX(-50%)',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              Click to change
-            </Typography>
-          </Box>
-          <Box>
-            <Typography variant="h4" gutterBottom>
-              Profile Settings
-            </Typography>
-            <Typography color="textSecondary">
-              Manage your account settings and profile information
-            </Typography>
-          </Box>
-        </Box>
+    <Container maxWidth="lg">
+      <Typography variant="h4" gutterBottom>
+        Profile Settings
+      </Typography>
 
-        {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
-        {success && <Alert severity="success" sx={{ mb: 3 }}>{success}</Alert>}
+      <Grid container spacing={3}>
+        {/* Profile Information */}
+        <Grid item xs={12} md={8}>
+          <Paper sx={{ p: 3 }}>
+            <Typography variant="h6" gutterBottom>Profile Information</Typography>
+            {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+            <Stack spacing={3}>
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'space-between',
+                borderBottom: '1px solid #eee',
+                pb: 2
+              }}>
+                <Box>
+                  <Typography color="text.secondary" variant="subtitle2">Name</Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 500 }}>{profileData.name}</Typography>
+                </Box>
+                <Button 
+                  onClick={() => handleEditClick('name')}
+                  color="primary"
+                  size="small"
+                >
+                  Edit Name
+                </Button>
+              </Box>
+              
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'space-between',
+                borderBottom: '1px solid #eee',
+                pb: 2
+              }}>
+                <Box>
+                  <Typography color="text.secondary" variant="subtitle2">Email</Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 500 }}>{profileData.email}</Typography>
+                </Box>
+                <Button 
+                  onClick={() => handleEditClick('email')}
+                  color="primary"
+                  size="small"
+                >
+                  Edit Email
+                </Button>
+              </Box>
 
-        <form onSubmit={handleSubmit}>
-          <Grid container spacing={3}>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Name"
-                name="name"
-                value={profile.name || ''}
-                onChange={handleChange}
-                required
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Email"
-                name="email"
-                type="email"
-                value={profile.email || ''}
-                onChange={handleChange}
-                required
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Phone"
-                name="phone"
-                value={profile.phone || ''}
-                onChange={handleChange}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Bio"
-                name="bio"
-                multiline
-                rows={4}
-                value={profile.bio || ''}
-                onChange={handleChange}
-              />
-            </Grid>
+              <Box>
+                <Typography color="text.secondary" variant="subtitle2" gutterBottom>Phone</Typography>
+                <TextField
+                  fullWidth
+                  placeholder="Enter phone number"
+                  name="phone"
+                  value={profileData.phone}
+                  onChange={(e) => setProfileData(prev => ({ ...prev, phone: e.target.value }))}
+                />
+              </Box>
+            </Stack>
+          </Paper>
+        </Grid>
 
-            {user?.role === 'coach' && (
-              <>
-                <Grid item xs={12}>
-                  <FormControl fullWidth>
-                    <InputLabel id="specializations-label">Specializations</InputLabel>
-                    <Select
-                      labelId="specializations-label"
-                      id="specializations"
-                      multiple
-                      value={profile.specializations || []}
-                      onChange={handleSpecializationChange}
-                      input={<OutlinedInput label="Specializations" />}
-                      renderValue={(selected) => (
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                          {selected.map((value) => (
-                            <Chip key={value} label={value} />
-                          ))}
-                        </Box>
-                      )}
-                    >
-                      {SPECIALIZATIONS.map((spec) => (
-                        <MenuItem key={spec} value={spec}>
-                          {spec}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Experience (years)"
-                    name="experience"
-                    type="number"
-                    value={profile.experience || ''}
-                    onChange={handleChange}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Hourly Rate ($)"
-                    name="hourlyRate"
-                    type="number"
-                    value={profile.hourlyRate || ''}
-                    onChange={handleChange}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Location"
-                    name="location"
-                    value={profile.location || ''}
-                    onChange={handleChange}
-                  />
-                </Grid>
-              </>
-            )}
+        {/* Password Change */}
+        <Grid item xs={12} md={4}>
+          <Paper sx={{ p: 3 }}>
+            <form onSubmit={handlePasswordSubmit}>
+              <Stack spacing={3}>
+                <Typography variant="h6">Change Password</Typography>
 
-            <Grid item xs={12}>
-              <Box display="flex" justifyContent="space-between">
+                <TextField
+                  fullWidth
+                  label="Current Password"
+                  name="currentPassword"
+                  type="password"
+                  value={passwordData.currentPassword}
+                  onChange={handlePasswordChange}
+                  required
+                />
+
+                <TextField
+                  fullWidth
+                  label="New Password"
+                  name="newPassword"
+                  type="password"
+                  value={passwordData.newPassword}
+                  onChange={handlePasswordChange}
+                  required
+                />
+
+                <TextField
+                  fullWidth
+                  label="Confirm New Password"
+                  name="confirmPassword"
+                  type="password"
+                  value={passwordData.confirmPassword}
+                  onChange={handlePasswordChange}
+                  required
+                />
+
                 <Button
                   type="submit"
                   variant="contained"
-                  color="primary"
+                  disabled={saving}
+                  fullWidth
                 >
-                  Save Changes
+                  {saving ? <CircularProgress size={24} /> : 'Update Password'}
                 </Button>
-                <Box>
-                  <Button
-                    variant="outlined"
-                    color="primary"
-                    onClick={() => setPasswordDialog(true)}
-                    sx={{ mr: 2 }}
-                  >
-                    Change Password
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    color="error"
-                    onClick={() => setDeleteDialog(true)}
-                  >
-                    Delete Account
-                  </Button>
-                </Box>
-              </Box>
-            </Grid>
-          </Grid>
-        </form>
-      </Paper>
+              </Stack>
+            </form>
+          </Paper>
+        </Grid>
+      </Grid>
 
-      {/* Password Change Dialog */}
-      <Dialog
-        open={passwordDialog}
-        onClose={() => {
-          setPasswordDialog(false);
-          setPasswordData({
-            currentPassword: '',
-            newPassword: '',
-            confirmPassword: ''
-          });
-          setError('');
-        }}
+      {/* Critical Update Dialog */}
+      <Dialog 
+        open={criticalUpdateDialog.open} 
+        onClose={() => setCriticalUpdateDialog(prev => ({ ...prev, open: false }))}
       >
-        <DialogTitle>Change Password</DialogTitle>
+        <DialogTitle>Update Profile Information</DialogTitle>
         <DialogContent>
-          <Box sx={{ pt: 1 }}>
+          <DialogContentText>
+            Changing your {criticalUpdateDialog.field} requires verification. Please fill in all fields:
+          </DialogContentText>
+          <Stack spacing={2} sx={{ mt: 2 }}>
             <TextField
               fullWidth
-              margin="dense"
+              label="Name"
+              name="name"
+              value={criticalUpdateDialog.data.name}
+              onChange={handleCriticalUpdateChange}
+            />
+            <TextField
+              fullWidth
+              label="Email"
+              name="email"
+              type="email"
+              value={criticalUpdateDialog.data.email}
+              onChange={handleCriticalUpdateChange}
+            />
+            <TextField
+              fullWidth
               label="Current Password"
+              name="password"
               type="password"
-              name="currentPassword"
-              value={passwordData.currentPassword}
-              onChange={handlePasswordChange}
-              required
+              value={criticalUpdateDialog.data.password}
+              onChange={handleCriticalUpdateChange}
             />
-            <TextField
-              fullWidth
-              margin="dense"
-              label="New Password"
-              type="password"
-              name="newPassword"
-              value={passwordData.newPassword}
-              onChange={handlePasswordChange}
-              required
-              helperText="Password must be at least 6 characters long"
-            />
-            <TextField
-              fullWidth
-              margin="dense"
-              label="Confirm New Password"
-              type="password"
-              name="confirmPassword"
-              value={passwordData.confirmPassword}
-              onChange={handlePasswordChange}
-              required
-            />
-          </Box>
+          </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setPasswordDialog(false)}>Cancel</Button>
-          <Button onClick={handlePasswordSubmit} variant="contained">
-            Change Password
+          <Button onClick={() => setCriticalUpdateDialog(prev => ({ ...prev, open: false }))}>
+            Cancel
+          </Button>
+          <Button onClick={handleCriticalUpdateSubmit} variant="contained" disabled={saving}>
+            {saving ? <CircularProgress size={24} /> : 'Update'}
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Delete Account Dialog */}
-      <Dialog open={deleteDialog} onClose={() => setDeleteDialog(false)}>
-        <DialogTitle>Delete Account</DialogTitle>
+      {/* Edit Dialog */}
+      <Dialog open={editDialog.open} onClose={handleCancelChange}>
+        <DialogTitle>Edit {editDialog.field?.charAt(0).toUpperCase() + editDialog.field?.slice(1)}</DialogTitle>
         <DialogContent>
-          <Typography gutterBottom>
-            This action cannot be undone. Please type DELETE to confirm.
-          </Typography>
+          <DialogContentText>
+            Current {editDialog.field}: {editDialog.value}
+          </DialogContentText>
           <TextField
+            autoFocus
+            margin="dense"
+            label={`New ${editDialog.field}`}
+            type={editDialog.field === 'email' ? 'email' : 'text'}
             fullWidth
-            value={deleteConfirmation}
-            onChange={(e) => setDeleteConfirmation(e.target.value)}
-            placeholder="Type DELETE to confirm"
+            value={editDialog.newValue}
+            onChange={handleDialogChange}
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeleteDialog(false)}>Cancel</Button>
-          <Button onClick={handleDeleteAccount} color="error" variant="contained">
-            Delete Account
+          <Button onClick={handleCancelChange}>Cancel</Button>
+          <Button onClick={handleConfirmChange} variant="contained" disabled={saving}>
+            {saving ? <CircularProgress size={24} /> : 'Save'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -470,4 +464,4 @@ const Profile = () => {
   );
 };
 
-export default Profile;
+export default Profile; 

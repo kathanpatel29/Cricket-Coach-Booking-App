@@ -12,10 +12,10 @@ router.get("/:id", reviewController.getReviewById);
 // Protected routes
 router.use(protect);
 
-// Client routes
+// User routes
 router.post("/", reviewController.createReview);
 router.put("/:id", reviewController.updateReview);
-router.delete("/:id", authorize("client", "admin"), reviewController.deleteReview);
+router.delete("/:id", authorize("user", "admin"), reviewController.deleteReview);
 
 // Admin routes
 router.patch("/:id/moderate", authorize("admin"), reviewController.moderateReview);

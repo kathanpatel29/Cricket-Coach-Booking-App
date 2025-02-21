@@ -18,4 +18,22 @@ const formatResponse = (status, message, data = null) => {
   return response;
 };
 
-module.exports = { formatResponse };
+// Error response formatter
+const errorResponse = (message, statusCode = 500) => {
+  return {
+    status: 'error',
+    message,
+    statusCode
+  };
+};
+
+// Success response formatter
+const successResponse = (res, statusCode, data, message) => {
+  res.status(statusCode).json({
+    status: 'success',
+    message,
+    data
+  });
+};
+
+module.exports = { formatResponse, errorResponse, successResponse };

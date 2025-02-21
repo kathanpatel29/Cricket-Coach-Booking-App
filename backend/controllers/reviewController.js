@@ -13,7 +13,7 @@ exports.createReview = catchAsync(async (req, res) => {
     throw new AppError("Booking not found", 404);
   }
 
-  if (booking.client.toString() !== req.user.id) {
+  if (booking.user.toString() !== req.user.id) {
     throw new AppError("Unauthorized to review this booking", 403);
   }
 
@@ -29,7 +29,7 @@ exports.createReview = catchAsync(async (req, res) => {
 
   // Create review
   const review = await Review.create({
-    client: req.user.id,
+    user: req.user.id,
     coach: booking.coach,
     booking: bookingId,
     rating,
@@ -51,7 +51,7 @@ exports.getCoachReviews = catchAsync(async (req, res) => {
   const { page = 1, limit = 10, sort = '-createdAt' } = req.query;
   
   const reviews = await Review.find({ coach: req.params.coachId })
-    .populate('client', 'name')
+    .populate('user', 'name')
     .populate('booking', 'date')
     .sort(sort)
     .skip((page - 1) * limit)
@@ -74,7 +74,7 @@ exports.updateReview = catchAsync(async (req, res) => {
   
   const review = await Review.findOne({
     _id: req.params.id,
-    client: req.user.id
+    user: req.user.id
   });
 
   if (!review) {
@@ -121,7 +121,7 @@ exports.deleteReview = catchAsync(async (req, res) => {
 exports.getAllReviews = async (req, res) => {
   try {
     const reviews = await Review.find()
-      .populate('client', 'name')
+      .populate('user', 'name')
       .populate('coach', 'name')
       .sort('-createdAt');
 
@@ -135,7 +135,7 @@ exports.getAllReviews = async (req, res) => {
 exports.getReviewById = async (req, res) => {
   try {
     const review = await Review.findById(req.params.id)
-      .populate('client', 'name')
+      .populate('user', 'name')
       .populate('coach', 'name');
 
     if (!review) {

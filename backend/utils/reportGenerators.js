@@ -16,7 +16,7 @@ async function generateBookingReport(startDate, endDate, filters = {}) {
   if (filters.paymentStatus) query.paymentStatus = filters.paymentStatus;
 
   const bookings = await Booking.find(query)
-    .populate('client', 'name email')
+    .populate('user', 'name email')
     .populate('coach', 'name')
     .sort('-createdAt');
 
@@ -125,7 +125,7 @@ async function generateCoachReport(startDate, endDate, filters = {}) {
   return { coaches };
 }
 
-async function generateClientReport(startDate, endDate, filters = {}) {
+async function generateUserReport(startDate, endDate, filters = {}) {
   const query = {};
   
   if (startDate && endDate) {
@@ -135,11 +135,11 @@ async function generateClientReport(startDate, endDate, filters = {}) {
     };
   }
 
-  const clients = await Booking.aggregate([
+  const users = await Booking.aggregate([
     { $match: query },
     {
       $group: {
-        _id: '$client',
+        _id: '$user',
         totalBookings: { $sum: 1 },
         totalSpent: {
           $sum: {
@@ -158,14 +158,14 @@ async function generateClientReport(startDate, endDate, filters = {}) {
         from: 'users',
         localField: '_id',
         foreignField: '_id',
-        as: 'clientInfo'
+        as: 'userInfo'
       }
     },
-    { $unwind: '$clientInfo' },
+    { $unwind: '$userInfo' },
     {
       $project: {
-        name: '$clientInfo.name',
-        email: '$clientInfo.email',
+        name: '$userInfo.name',
+        email: '$userInfo.email',
         totalBookings: 1,
         completedBookings: 1,
         totalSpent: 1,
@@ -181,12 +181,12 @@ async function generateClientReport(startDate, endDate, filters = {}) {
     { $sort: { totalSpent: -1 } }
   ]);
 
-  return { clients };
+  return { users };
 }
 
 module.exports = {
   generateBookingReport,
   generateEarningsReport,
   generateCoachReport,
-  generateClientReport
+  generateUserReport
 }; 

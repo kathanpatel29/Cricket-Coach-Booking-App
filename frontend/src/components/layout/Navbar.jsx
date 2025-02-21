@@ -1,277 +1,183 @@
-import React from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { 
-  AppBar, 
-  Toolbar, 
-  Button, 
-  Box, 
-  IconButton, 
-  Menu, 
-  MenuItem, 
-  Avatar,
+import React, { useState, useEffect } from 'react';
+import {
+  AppBar,
+  Toolbar,
   Typography,
-  Container,
-  Fade,
+  Button,
+  IconButton,
+  Box,
+  Menu,
+  MenuItem,
+  Avatar,
   Divider,
-  ListItemIcon,
   useTheme,
-  useMediaQuery
-} from '../shared/MuiComponents';
-import { 
-  PersonIcon,
-  SettingsIcon,
-  LogoutIcon,
-  MenuIcon,
-  DashboardIcon,
-  EventIcon,
-  ScheduleIcon,
-  MoneyIcon
-} from '../shared/MuiComponents';
+  useMediaQuery,
+  CircularProgress
+} from '@mui/material';
+import {
+  Menu as MenuIcon,
+  Person as PersonIcon,
+  Settings as SettingsIcon,
+  ExitToApp as LogoutIcon,
+  Dashboard as DashboardIcon
+} from '@mui/icons-material';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { getNavLinks, getBreadcrumbs } from '../../utils/navigation';
+import LanguageSwitcher from '../common/LanguageSwitcher';
 
-const Navbar = () => {
-  const { user, logout } = useAuth();
-  const location = useLocation();
+const Navbar = ({ onSidebarToggle }) => {
+  const { user, logout, loading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const [anchorEl, setAnchorEl] = React.useState(null);
-  const [mobileMenuAnchor, setMobileMenuAnchor] = React.useState(null);
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const [anchorEl, setAnchorEl] = useState(null);
 
-  const handleMenu = (event) => {
+  const handleMenuOpen = (event) => {
     setAnchorEl(event.currentTarget);
   };
 
-  const handleMobileMenu = (event) => {
-    setMobileMenuAnchor(event.currentTarget);
-  };
-
-  const handleClose = () => {
+  const handleMenuClose = () => {
     setAnchorEl(null);
   };
 
-  const handleMobileMenuClose = () => {
-    setMobileMenuAnchor(null);
+  const handleLogout = async () => {
+    await logout();
+    handleMenuClose();
+    navigate('/login');
   };
 
-  const handleLogout = () => {
-    logout();
-    handleClose();
-    handleMobileMenuClose();
-    navigate('/');
+  const handleDashboard = () => {
+    handleMenuClose();
+    const dashboardPath = user?.role === 'admin' 
+      ? '/admin/dashboard' 
+      : user?.role === 'coach' 
+        ? '/coach/dashboard' 
+        : '/user/dashboard';
+    navigate(dashboardPath);
   };
 
-  const navLinks = getNavLinks(user?.role);
-  const breadcrumbs = getBreadcrumbs(location.pathname);
-
-  // Coach navigation items
-  const coachNavItems = [
-    { to: '/coach/dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
-    { to: '/coach/sessions', label: 'Sessions', icon: <EventIcon /> },
-    { to: '/coach/availability', label: 'Availability', icon: <ScheduleIcon /> },
-    { to: '/coach/earnings', label: 'Earnings', icon: <MoneyIcon /> }
-  ];
+  if (loading) {
+    return (
+      <AppBar position="fixed" color="default" elevation={1}>
+        <Toolbar>
+          <Typography variant="h6" sx={{ flexGrow: 1 }}>
+            Cricket Coach
+          </Typography>
+          <CircularProgress size={24} />
+        </Toolbar>
+      </AppBar>
+    );
+  }
 
   return (
-    <AppBar 
-      position="sticky" 
-      color="default" 
-      elevation={0}
-      sx={{ 
-        borderBottom: '1px solid',
-        borderColor: 'divider',
-        backdropFilter: 'blur(8px)',
-        backgroundColor: 'rgba(255, 255, 255, 0.95)'
-      }}
-    >
-      <Container maxWidth="xl">
-        <Toolbar sx={{ justifyContent: 'space-between', minHeight: { xs: '64px', md: '72px' } }}>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <Link to="/" style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center' }}>
-              <Typography
-                variant="h6"
-                noWrap
-                sx={{
-                  display: { xs: 'none', md: 'flex' },
-                  fontFamily: 'Poppins',
-                  fontWeight: 600,
-                  color: 'primary.main',
-                  textDecoration: 'none',
-                }}
-              >
-                CricCoach
-              </Typography>
-            </Link>
-          </Box>
+    <AppBar position="fixed" color="default" elevation={1}>
+      <Toolbar>
+        {isMobile && onSidebarToggle && (
+          <IconButton
+            color="inherit"
+            edge="start"
+            onClick={onSidebarToggle}
+            sx={{ mr: 2 }}
+          >
+            <MenuIcon />
+          </IconButton>
+        )}
 
-          {isMobile ? (
+        <Typography
+          variant="h6"
+          component={Link}
+          to="/"
+          sx={{
+            flexGrow: 1,
+            textDecoration: 'none',
+            color: 'inherit',
+            display: 'flex',
+            alignItems: 'center'
+          }}
+        >
+          Cricket Coach
+        </Typography>
+
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <LanguageSwitcher />
+          
+          {user ? (
             <>
-              <IconButton
-                size="large"
-                edge="start"
-                color="inherit"
-                aria-label="menu"
-                onClick={handleMobileMenu}
-                sx={{ ml: 2 }}
-              >
-                <MenuIcon />
+              {!isMobile && (
+                <Typography variant="body2" sx={{ mr: 2 }}>
+                  Welcome, {user.name}
+                </Typography>
+              )}
+              <IconButton onClick={handleMenuOpen} color="inherit">
+                <Avatar
+                  src={user.profileImage}
+                  alt={user.name}
+                  sx={{ width: 32, height: 32 }}
+                >
+                  {user.name[0]}
+                </Avatar>
               </IconButton>
               <Menu
-                anchorEl={mobileMenuAnchor}
-                open={Boolean(mobileMenuAnchor)}
-                onClose={handleMobileMenuClose}
-                TransitionComponent={Fade}
-                PaperProps={{
-                  elevation: 1,
-                  sx: { width: '200px', mt: 1.5 }
+                anchorEl={anchorEl}
+                open={Boolean(anchorEl)}
+                onClose={handleMenuClose}
+                anchorOrigin={{
+                  vertical: 'bottom',
+                  horizontal: 'right',
+                }}
+                transformOrigin={{
+                  vertical: 'top',
+                  horizontal: 'right',
                 }}
               >
-                {navLinks.map((link) => (
-                  <MenuItem
-                    key={link.to}
-                    onClick={() => {
-                      handleMobileMenuClose();
-                      navigate(link.to);
-                    }}
-                    sx={{
-                      py: 1,
-                      px: 2,
-                      '&:hover': { backgroundColor: 'action.hover' }
-                    }}
-                  >
-                    {link.label}
-                  </MenuItem>
-                ))}
-                {!user && (
-                  <>
-                    <Divider />
-                    <MenuItem onClick={() => navigate('/login')}>
-                      <ListItemIcon>
-                        <PersonIcon fontSize="small" />
-                      </ListItemIcon>
-                      Login
-                    </MenuItem>
-                    <MenuItem onClick={() => navigate('/register')}>
-                      <ListItemIcon>
-                        <PersonIcon fontSize="small" />
-                      </ListItemIcon>
-                      Register
-                    </MenuItem>
-                  </>
-                )}
+                <MenuItem onClick={handleDashboard}>
+                  <DashboardIcon sx={{ mr: 1 }} /> Dashboard
+                </MenuItem>
+                <MenuItem onClick={() => {
+                  handleMenuClose();
+                  navigate(`/${user.role}/profile`);
+                }}>
+                  <PersonIcon sx={{ mr: 1 }} /> Profile
+                </MenuItem>
+                <MenuItem onClick={() => {
+                  handleMenuClose();
+                  navigate(`/${user.role}/settings`);
+                }}>
+                  <SettingsIcon sx={{ mr: 1 }} /> Settings
+                </MenuItem>
+                <Divider />
+                <MenuItem onClick={handleLogout}>
+                  <LogoutIcon sx={{ mr: 1 }} /> Logout
+                </MenuItem>
               </Menu>
             </>
           ) : (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              {navLinks.map((link) => (
-                <Button
-                  key={link.to}
-                  component={Link}
-                  to={link.to}
-                  color="inherit"
-                  sx={{
-                    fontSize: '0.95rem',
-                    fontWeight: 500,
-                    textTransform: 'none',
-                    px: 2,
-                    '&:hover': {
-                      backgroundColor: 'action.hover',
-                    },
-                    ...(location.pathname === link.to && {
-                      color: 'primary.main',
-                      fontWeight: 600,
-                    }),
-                  }}
-                >
-                  {link.label}
-                </Button>
-              ))}
-            </Box>
-          )}
-
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            {user ? (
+            !location.pathname.includes('login') && (
               <>
-                <IconButton
-                  onClick={handleMenu}
-                  size="small"
-                  sx={{ padding: 0.5 }}
-                  aria-label="account menu"
-                >
-                  <Avatar
-                    src={user.profileImage}
-                    alt={user.name}
-                    sx={{
-                      width: 40,
-                      height: 40,
-                      border: '2px solid',
-                      borderColor: 'primary.main'
-                    }}
-                  >
-                    {user.name?.charAt(0)}
-                  </Avatar>
-                </IconButton>
-                <Menu
-                  anchorEl={anchorEl}
-                  open={Boolean(anchorEl)}
-                  onClose={handleClose}
-                  onClick={handleClose}
-                >
-                  <MenuItem component={Link} to="/profile">
-                    <ListItemIcon>
-                      <PersonIcon fontSize="small" />
-                    </ListItemIcon>
-                    Profile
-                  </MenuItem>
-                  <MenuItem component={Link} to="/settings">
-                    <ListItemIcon>
-                      <SettingsIcon fontSize="small" />
-                    </ListItemIcon>
-                    Settings
-                  </MenuItem>
-                  <Divider />
-                  <MenuItem onClick={handleLogout}>
-                    <ListItemIcon>
-                      <LogoutIcon fontSize="small" />
-                    </ListItemIcon>
-                    Logout
-                  </MenuItem>
-                </Menu>
-              </>
-            ) : (
-              <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 2 }}>
                 <Button
+                  color="inherit"
                   component={Link}
                   to="/login"
-                  color="inherit"
-                  sx={{
-                    fontWeight: 500,
-                    '&:hover': { backgroundColor: 'action.hover' }
-                  }}
                 >
                   Login
                 </Button>
                 <Button
+                  color="inherit"
                   component={Link}
                   to="/register"
-                  variant="contained"
-                  color="primary"
-                  sx={{
-                    fontWeight: 600,
-                    boxShadow: 'none',
-                    '&:hover': { boxShadow: 'none' }
-                  }}
+                  variant="outlined"
+                  sx={{ ml: 1 }}
                 >
                   Register
                 </Button>
-              </Box>
-            )}
-          </Box>
-        </Toolbar>
-      </Container>
+              </>
+            )
+          )}
+        </Box>
+      </Toolbar>
     </AppBar>
   );
 };
 
-export default Navbar;
+export default Navbar; 

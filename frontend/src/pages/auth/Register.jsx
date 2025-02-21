@@ -28,7 +28,7 @@ const Register = () => {
     name: '',
     email: '',
     password: '',
-    role: 'client',
+    role: 'user',
     adminSecretKey: '',
     specializations: [],
     experience: '',
@@ -131,7 +131,7 @@ const Register = () => {
               onChange={handleChange}
               label="Role"
             >
-              <MenuItem value="client">Client</MenuItem>
+              <MenuItem value="user">User</MenuItem>
               <MenuItem value="coach">Coach</MenuItem>
               <MenuItem value="admin">Admin</MenuItem>
             </Select>
@@ -249,4 +249,4 @@ const Register = () => {
   );
 };
 
-export default Register;
+export default Register; 

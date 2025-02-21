@@ -1,80 +1,62 @@
 const express = require('express');
-const dotenv = require('dotenv');
 const cors = require('cors');
-const path = require('path');
-const compression = require('compression');
+const rateLimit = require('express-rate-limit');
+const helmet = require('helmet');
+const mongoSanitize = require('express-mongo-sanitize');
+const xss = require('xss-clean');
+const config = require('./config/config');
 const { connectDB } = require('./config/db');
-const app = require('./app');
+const errorMiddleware = require('./middleware/errorMiddleware');
 
-// Load env vars
-dotenv.config();
 
-// Middleware
-const { errorHandler } = require('./middleware/errorMiddleware.js');
-
-// Enable compression
-app.use(compression());
-
-// ✅ Fix CORS Configuration
-const allowedOrigins = process.env.NODE_ENV === 'production' 
-  ? ['https://cric-coach-app.vercel.app']
-  : ['http://localhost:3000'];
-
-app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));  // Return an actual error instead of `false`
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'Cache-Control', 'Pragma']
-}));
-
-// ✅ Handle preflight OPTIONS requests
-app.options('*', (req, res) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, Pragma");
-  res.sendStatus(204);
+const app = express();
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  limit: 100, // Limit each IP to 100 requests per windowMs
+  message: 'Too many requests from this IP, please try again later.',
+  headers: true,
 });
 
-// Test route
-app.get('/api/test', (req, res) => {
-  res.json({ message: 'API is working' });
+// Security middleware
+app.use(helmet());
+app.use(cors(config.corsOptions));
+app.use(mongoSanitize());
+app.use(xss());
+
+// Rate limiting
+app.use('/api', apiLimiter);
+
+// Body parser
+app.use(express.json({ limit: '10kb' }));
+app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+
+// Routes
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/users', require('./routes/users'));
+app.use('/api/coaches', require('./routes/coaches'));
+app.use('/api/schedules', require('./routes/schedules'));
+app.use('/api/bookings', require('./routes/bookings'));
+app.use('/api/admin', require('./routes/admin'));
+app.use('/api/payments', require('./routes/payments'));
+app.use('/api/reviews', require('./routes/reviews'));
+
+// Error handling
+app.use(errorMiddleware);
+
+// Database connection
+connectDB();
+
+// Start server
+const PORT = config.port;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
 
-// Root route
-app.get('/', (req, res) => {
-  res.json({ message: 'Cricket Coach Booking API is running' });
+// Handle unhandled rejections
+process.on('unhandledRejection', (err) => {
+  console.error('UNHANDLED REJECTION! 💥 Shutting down...');
+  console.error(err.name, err.message);
+  process.exit(1);
 });
-
-// Handle 404 routes
-app.use('*', (req, res) => {
-  res.status(404).json({ 
-    message: 'Route not found',
-    status: 404
-  });
-});
-
-// Error Handler
-app.use(errorHandler);
-
-// Connect to MongoDB
-connectDB()
-  .then(() => {
-    console.log('MongoDB connected successfully');
-    
-    const PORT = process.env.PORT || 5000;
-    app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-    });
-  })
-  .catch((error) => {
-    console.error('Failed to connect to MongoDB:', error);
-    process.exit(1);
-  });
 
 module.exports = app;

@@ -10,7 +10,7 @@ router.get("/history", protect, paymentController.getPaymentHistory);
 router.post("/refund", protect, paymentController.refundPayment);
 router.get("/earnings", protect, paymentController.getCoachEarnings);
 router.post("/request-refund/:paymentId", protect, paymentController.requestRefund);
-router.get("/all", protect, paymentController.getAllPayments);
+router.get("/", protect, paymentController.getAllPayments);
 router.post("/process-refund/:paymentId", protect, paymentController.processRefund);
 
 module.exports = router;
