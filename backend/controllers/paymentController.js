@@ -10,15 +10,26 @@ const mongoose = require('mongoose');
 exports.createPaymentIntent = catchAsync(async (req, res) => {
   const { bookingId } = req.params;
   
-  const booking = await Booking.findById(bookingId)
+  const booking = await Booking.findByIdOrString(bookingId)
     .populate('coach');
     
   if (!booking) {
     throw new AppError("Booking not found", 404);
   }
 
+  // Check if booking belongs to the current user
+  if (booking.user.toString() !== req.user._id.toString()) {
+    throw new AppError("Unauthorized access to this booking", 403);
+  }
+
+  // Check if payment is already processed
+  if (booking.paymentStatus !== 'pending') {
+    throw new AppError(`Payment already ${booking.paymentStatus}`, 400);
+  }
+
+  // Create a payment intent with Stripe
   const paymentIntent = await stripe.paymentIntents.create({
-    amount: Math.round(booking.totalAmount * 100), // Convert to cents
+    amount: Math.round(booking.paymentAmount * 100), // Convert to cents
     currency: "usd",
     metadata: { 
       bookingId: booking._id.toString(),
@@ -27,28 +38,69 @@ exports.createPaymentIntent = catchAsync(async (req, res) => {
     }
   });
 
-  booking.paymentIntentId = paymentIntent.id;
-  await booking.save();
+  // Create or update payment record
+  let payment = await Payment.findOne({ booking: booking._id });
+  
+  if (!payment) {
+    payment = new Payment({
+      booking: booking._id,
+      amount: booking.paymentAmount,
+      status: 'pending',
+      stripePaymentIntentId: paymentIntent.id,
+      stripeUserSecret: paymentIntent.client_secret
+    });
+  } else {
+    payment.stripePaymentIntentId = paymentIntent.id;
+    payment.stripeUserSecret = paymentIntent.client_secret;
+  }
+  
+  await payment.save();
 
   res.json({
     status: 'success',
     data: {
-      userSecret: paymentIntent.user_secret
+      clientSecret: paymentIntent.client_secret,
+      paymentId: payment._id
     }
   });
 });
 
 exports.confirmPayment = catchAsync(async (req, res) => {
   const { bookingId } = req.params;
+  const { paymentIntentId } = req.body;
   
-  const booking = await Booking.findById(bookingId);
+  const booking = await Booking.findByIdOrString(bookingId);
   if (!booking) {
     throw new AppError("Booking not found", 404);
   }
 
+  // Check if booking belongs to the current user
+  if (booking.user.toString() !== req.user._id.toString()) {
+    throw new AppError("Unauthorized access to this booking", 403);
+  }
+
+  // Verify payment intent with Stripe
+  const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+  
+  if (paymentIntent.status !== 'succeeded') {
+    throw new AppError(`Payment not successful. Status: ${paymentIntent.status}`, 400);
+  }
+  
+  // Update booking status
   booking.status = 'confirmed';
   booking.paymentStatus = 'paid';
+  booking.paymentId = paymentIntentId;
   await booking.save();
+
+  // Update payment record
+  const payment = await Payment.findOne({ 
+    stripePaymentIntentId: paymentIntentId 
+  });
+  
+  if (payment) {
+    payment.status = 'succeeded';
+    await payment.save();
+  }
 
   res.json({
     status: 'success',

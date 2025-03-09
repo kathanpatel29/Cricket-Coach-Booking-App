@@ -104,6 +104,18 @@ timeSlotSchema.virtual('isBookable').get(function() {
   return this.status === 'available' && isAfter(slotDate, cutoffTime);
 });
 
+// Fix for cast string ID issue - ensure ObjectId conversion
+timeSlotSchema.statics.findByIdOrString = function(id) {
+  try {
+    return this.findById(mongoose.Types.ObjectId(id));
+  } catch (error) {
+    if (error.name === 'CastError') {
+      return this.findById(id);
+    }
+    throw error;
+  }
+};
+
 const TimeSlot = mongoose.model('TimeSlot', timeSlotSchema);
 
 // Generate time slots for the next 4 weeks

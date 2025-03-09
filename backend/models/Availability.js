@@ -50,3 +50,4 @@ availabilitySchema.pre('save', function(next) {
 });
 
 module.exports = mongoose.model('Availability', availabilitySchema); 
+

@@ -8,6 +8,7 @@ const Review = require("../models/Review");
 const { AppError, catchAsync } = require('../utils/errorHandler');
 const Availability = require('../models/Availability');
 const mongoose = require('mongoose');
+const TimeSlot = require('../models/TimeSlot');
 
 // Get valid specializations
 exports.getSpecializations = async (req, res) => {
@@ -122,43 +123,17 @@ exports.getAllCoaches = catchAsync(async (req, res) => {
   });
 });
 
-// Get coach by ID (public)
+// Get coach by ID
 exports.getCoachById = catchAsync(async (req, res) => {
   const coach = await Coach.findById(req.params.id)
     .populate('user', 'name email profileImage')
-    .populate('reviews')
-    .select('specializations experience hourlyRate bio availability recurringAvailability averageRating totalReviews location');
-  
+    .select('specializations experience hourlyRate bio availability reviews ratings averageRating');
+
   if (!coach) {
-    return res.status(404).json({
-      status: 'error',
-      message: 'Coach not found'
-    });
+    throw new AppError('Coach not found', 404);
   }
 
-  // Process coach data to match frontend expectations
-  const processedCoach = {
-    _id: coach._id,
-    name: coach.user.name,
-    email: coach.user.email,
-    profileImage: coach.user.profileImage,
-    specializations: coach.specializations || [],
-    experience: coach.experience || 0,
-    hourlyRate: coach.hourlyRate || 0,
-    bio: coach.bio || '',
-    averageRating: coach.averageRating || 0,
-    totalReviews: coach.reviews?.length || 0,
-    location: coach.location || '',
-    availability: coach.availability || [],
-    reviews: coach.reviews || [],
-  };
-  
-  res.json({
-    status: 'success',
-    data: {
-      coach: processedCoach
-    }
-  });
+  res.json(formatResponse('success', 'Coach details retrieved successfully', { coach }));
 });
 
 // Get coach profile
@@ -240,8 +215,9 @@ exports.getDashboardStats = catchAsync(async (req, res) => {
 // Get coach availability
 exports.getAvailability = catchAsync(async (req, res) => {
   const { date } = req.query;
+  console.log(date);
   const coach = await Coach.findOne({ user: req.user.id });
-  
+
   if (!coach) {
     throw new AppError('Coach profile not found', 404);
   }
@@ -270,23 +246,88 @@ exports.addAvailability = catchAsync(async (req, res) => {
   // Update recurring availability if provided
   if (recurring) {
     coach.recurringAvailability = recurring;
+    await coach.save();
+
+    // Generate TimeSlots for recurring availability
+    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const startDate = new Date();
+    const bulkOps = [];
+
+    for (let i = 0; i < 28; i++) { // Generate for next 4 weeks
+      const currentDate = new Date(startDate);
+      currentDate.setDate(startDate.getDate() + i);
+      const dayName = days[currentDate.getDay()].toLowerCase();
+      
+      if (recurring[dayName] && recurring[dayName].length > 0) {
+        for (const slot of recurring[dayName]) {
+          bulkOps.push({
+            insertOne: {
+              document: {
+                coach: coach._id,
+                date: currentDate,
+                startTime: slot.startTime,
+                endTime: slot.endTime,
+                duration: slot.duration || 60,
+                status: 'available',
+                bookingCutoffHours: coach.availabilitySettings?.bookingCutoffHours || 12
+              }
+            }
+          });
+        }
+      }
+    }
+
+    if (bulkOps.length > 0) {
+      await TimeSlot.bulkWrite(bulkOps);
+    }
   }
 
   // Update specific date availability if provided
   if (date && slots) {
-    // Remove existing slots for this date
+    // Delete existing slots for this date
+    await TimeSlot.deleteMany({
+      coach: coach._id,
+      date: new Date(date),
+      status: 'available'
+    });
+
+    // Create new time slots
+    const timeSlots = await TimeSlot.create(
+      slots.map(slot => ({
+        coach: coach._id,
+        date: new Date(date),
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+        duration: slot.duration || 60,
+        status: 'available',
+        bookingCutoffHours: coach.availabilitySettings?.bookingCutoffHours || 12
+      }))
+    );
+
+    // Update coach's availability array
     coach.availability = coach.availability.filter(slot => slot.date !== date);
-    // Add new slots
-    coach.availability.push(...slots.map(time => ({ date, time })));
+    coach.availability.push({
+      date,
+      slots: slots.map(slot => ({
+        startTime: slot.startTime,
+        endTime: slot.endTime
+      }))
+    });
+    await coach.save();
   }
 
-  await coach.save();
+  // Get updated availability for response
+  const availableTimeSlots = await TimeSlot.find({
+    coach: coach._id,
+    status: 'available',
+    date: date ? new Date(date) : { $gte: new Date() }
+  }).sort('date startTime');
   
   res.json({
     status: 'success',
     message: 'Availability updated successfully',
     data: {
-      availableSlots: coach.availability.filter(slot => slot.date === date),
+      availableTimeSlots,
       recurringAvailability: coach.recurringAvailability
     }
   });

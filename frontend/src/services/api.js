@@ -97,7 +97,7 @@ export const coachService = {
   getAnalytics: () => api.get('/coach/analytics'),
   
   // Availability
-  getAvailability: (date) => api.get('/coaches/availability', { params: { date } }),
+  getAvailability: () => api.get('/coaches/availability'),
   updateAvailability: (data) => api.post('/coaches/availability', data),
   addAvailability: (availability) => api.post('/coaches/availability', availability),
   deleteAvailability: (id) => api.delete(`/coaches/availability/${id}`),

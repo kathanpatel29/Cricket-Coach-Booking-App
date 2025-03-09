@@ -6,6 +6,7 @@ const { checkCoachApproval } = require('../middleware/coachMiddleware');
 
 // Public routes
 router.get('/', coachController.getAllCoaches);
+router.get('/:id', coachController.getCoachById);
 router.get('/:id/public', coachController.getCoachPublicProfile);
 
 // Protected coach routes
@@ -18,7 +19,7 @@ router.put('/settings/availability', checkCoachApproval, coachController.updateA
 // Schedule and Availability
 router.get('/schedule', coachController.getSchedule);
 router.put('/schedule', checkCoachApproval, coachController.updateSchedule);
-router.get('/availability', coachController.getAvailability);
+router.get('/availability/:date', coachController.getAvailability);
 router.post('/availability', checkCoachApproval, coachController.addAvailability);
 router.delete('/availability/:id', checkCoachApproval, coachController.deleteAvailability);
 

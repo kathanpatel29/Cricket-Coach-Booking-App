@@ -18,7 +18,7 @@ exports.createBooking = catchAsync(async (req, res) => {
   const { coachId, timeSlotId } = req.body;
 
   // Validate coach exists and is approved
-  const coach = await Coach.findById(coachId)
+  const coach = await Coach.findByIdOrString(coachId)
     .populate('user', 'isApproved');
 
   if (!coach) {
@@ -30,7 +30,7 @@ exports.createBooking = catchAsync(async (req, res) => {
   }
 
   // Find and validate time slot
-  const timeSlot = await TimeSlot.findById(timeSlotId);
+  const timeSlot = await TimeSlot.findByIdOrString(timeSlotId);
   if (!timeSlot) {
     throw new AppError("Time slot not found", 404);
   }
@@ -50,17 +50,17 @@ exports.createBooking = catchAsync(async (req, res) => {
     throw new AppError("Booking cutoff time has passed", 400);
   }
 
+  // Calculate payment amount
+  const paymentAmount = coach.hourlyRate * (timeSlot.duration / 60);
+
   // Create booking with proper ObjectIds
   const booking = await Booking.create({
     user: req.user._id, // This is already an ObjectId from auth middleware
     coach: coach._id,   // Using the coach._id from the found coach
     timeSlot: timeSlot._id,
-    date: timeSlot.date,
-    startTime: timeSlot.startTime,
-    endTime: timeSlot.endTime,
-    duration: timeSlot.duration,
     status: 'pending',
-    paymentAmount: coach.hourlyRate * (timeSlot.duration / 60) // Calculate based on duration
+    paymentStatus: 'pending',
+    paymentAmount: paymentAmount
   });
 
   // Update time slot status
@@ -68,7 +68,27 @@ exports.createBooking = catchAsync(async (req, res) => {
   timeSlot.booking = booking._id;
   await timeSlot.save();
 
-  // Return the booking with populated fields
+  // Create Stripe payment intent
+  const paymentIntent = await stripe.paymentIntents.create({
+    amount: Math.round(paymentAmount * 100), // Convert to cents
+    currency: "usd",
+    metadata: { 
+      bookingId: booking._id.toString(),
+      coachId: coach._id.toString(),
+      userId: req.user._id.toString()
+    }
+  });
+
+  // Create payment record
+  await Payment.create({
+    booking: booking._id,
+    amount: paymentAmount,
+    status: 'pending',
+    stripePaymentIntentId: paymentIntent.id,
+    stripeUserSecret: paymentIntent.client_secret
+  });
+
+  // Return the booking with populated fields and payment intent
   const populatedBooking = await Booking.findById(booking._id)
     .populate('user', 'name email')
     .populate('coach', 'user specializations hourlyRate')
@@ -76,7 +96,13 @@ exports.createBooking = catchAsync(async (req, res) => {
 
   res.status(201).json({
     status: 'success',
-    data: { booking: populatedBooking }
+    data: { 
+      booking: populatedBooking,
+      paymentIntent: {
+        id: paymentIntent.id,
+        clientSecret: paymentIntent.client_secret
+      }
+    }
   });
 });
 
@@ -224,7 +250,10 @@ exports.getAvailableSlots = catchAsync(async (req, res) => {
   const endOfDayDate = endOfDay(searchDate);
 
   // Get coach and validate approval status
-  const coach = await Coach.findById(coachId).populate('user', 'isApproved');
+  const coach = await Coach.findById(coachId)
+    .populate('user', 'isApproved name')
+    .select('availabilitySettings hourlyRate');
+
   if (!coach || !coach.user?.isApproved) {
     throw new AppError('Coach not found or not approved', 404);
   }
@@ -248,9 +277,28 @@ exports.getAvailableSlots = catchAsync(async (req, res) => {
     const [hours, minutes] = slot.startTime.split(':');
     slotDateTime.setHours(parseInt(hours), parseInt(minutes));
     return (slotDateTime - now) / (1000 * 60 * 60) >= cutoffHours;
-  });
+  }).map(slot => ({
+    _id: slot._id,
+    startTime: slot.startTime,
+    endTime: slot.endTime,
+    duration: slot.duration,
+    date: slot.date,
+    hourlyRate: coach.hourlyRate,
+    coachName: coach.user.name
+  }));
 
-  res.json(formatResponse('success', 'Available slots retrieved successfully', filteredSlots));
+  res.json({
+    status: 'success',
+    data: {
+      slots: filteredSlots,
+      coach: {
+        _id: coach._id,
+        name: coach.user.name,
+        hourlyRate: coach.hourlyRate,
+        bookingCutoffHours: cutoffHours
+      }
+    }
+  });
 });
 
 // Helper function to validate status transitions

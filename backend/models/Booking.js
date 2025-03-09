@@ -122,19 +122,24 @@ bookingSchema.post('save', async function() {
 
 // virtual Fields for Calculated Fees
 bookingSchema.virtual('platformFee').get(function () {
-  return this.amount * 0.10;
+  return this.paymentAmount * 0.10;
 });
 
 bookingSchema.virtual('coachEarnings').get(function () {
-  return this.amount * 0.90;
+  return this.paymentAmount * 0.90;
 });
 
-bookingSchema.pre('save', function (next) {
-  if (this.isModified('amount')) {
-    this.markModified('amount');
+// Fix for cast string ID issue - ensure ObjectId conversion
+bookingSchema.statics.findByIdOrString = function(id) {
+  try {
+    return this.findById(mongoose.Types.ObjectId(id));
+  } catch (error) {
+    if (error.name === 'CastError') {
+      return this.findById(id);
+    }
+    throw error;
   }
-  next();
-});
+};
 
 const Booking = mongoose.model('Booking', bookingSchema);
 

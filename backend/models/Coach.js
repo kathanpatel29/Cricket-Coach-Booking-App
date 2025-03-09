@@ -3,16 +3,21 @@ const mongoose = require('mongoose');
 // Define valid specializations
 const VALID_SPECIALIZATIONS = ['batting', 'bowling', 'fielding', 'wicket-keeping'];
 
-const availabilitySchema = new mongoose.Schema({
-  date: {
-    type: String,
-    required: true
-  },
-  time: {
-    type: String,
-    required: true
-  }
-});
+// const availabilitySchema = new mongoose.Schema({
+//   type: {
+//     type: mongoose.Schema.Types.ObjectId,
+//     ref: 'Availability',
+//     required: true
+//   },
+//   date: {
+//     type: String,
+//     required: true
+//   },
+//   time: {
+//     type: String,
+//     required: true
+//   }
+// });
 
 const recurringAvailabilitySchema = new mongoose.Schema({
   Monday: [String],
@@ -97,7 +102,11 @@ const coachSchema = new mongoose.Schema({
     minlength: 10,
     maxlength: 1000
   },
-  availability: [availabilitySchema],
+  availability: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Availability',
+    required: true
+  },
   recurringAvailability: {
     type: recurringAvailabilitySchema,
     default: () => ({})
@@ -222,6 +231,7 @@ coachSchema.methods.isTimeSlotAvailable = function(date, timeSlot) {
 
 // Method to mark a time slot as booked
 coachSchema.methods.markTimeSlotAsBooked = async function(timeSlotId) {
+  const TimeSlot = mongoose.model('TimeSlot');
   const timeSlot = await TimeSlot.findOne({
     _id: timeSlotId,
     coach: this._id,
@@ -235,6 +245,18 @@ coachSchema.methods.markTimeSlotAsBooked = async function(timeSlotId) {
   timeSlot.status = 'booked';
   await timeSlot.save();
   return true;
+};
+
+// Fix for cast string ID issue - ensure ObjectId conversion
+coachSchema.statics.findByIdOrString = function(id) {
+  try {
+    return this.findById(mongoose.Types.ObjectId(id));
+  } catch (error) {
+    if (error.name === 'CastError') {
+      return this.findById(id);
+    }
+    throw error;
+  }
 };
 
 const Coach = mongoose.model('Coach', coachSchema);

@@ -8,7 +8,8 @@ const { startOfWeek, endOfWeek, addDays, format, parseISO } = require('date-fns'
 exports.getAvailability = catchAsync(async (req, res) => {
   const { coachId, startDate, endDate } = req.query;
   
-  const coach = await Coach.findById(coachId)
+  // Use the findByIdOrString method to handle string ID conversion
+  const coach = await Coach.findByIdOrString(coachId)
     .populate('user', 'isApproved')
     .populate('schedule');
     

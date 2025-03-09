@@ -47,6 +47,7 @@ const CoachProfile = () => {
       const response = await publicService.getCoachById(id);
       if (response?.data?.data?.coach) {
         setCoach(response.data.data.coach);
+        console.log(response.data.data.coach);
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Error fetching coach profile');
@@ -147,7 +148,7 @@ const CoachProfile = () => {
                 </ListItemAvatar>
                 <ListItemText
                   primary="Availability"
-                  secondary={coach.availability}
+                  secondary={`${coach.availability.date} at ${coach.availability.time}`}
                 />
               </ListItem>
             </List>
