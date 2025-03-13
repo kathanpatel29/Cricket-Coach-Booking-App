@@ -1,4 +1,5 @@
-import { Link } from "react-router-dom";
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { 
   Box, 
   Button, 
@@ -9,7 +10,10 @@ import {
   CardContent, 
   CardMedia,
   Stack,
-  Paper
+  Paper,
+  Avatar,
+  Chip,
+  Rating
 } from '@mui/material';
 import SportsCricketIcon from '@mui/icons-material/SportsCricket';
 import PeopleIcon from '@mui/icons-material/People';
@@ -22,22 +26,22 @@ const Home = () => {
   
   const features = [
     {
-      icon: <SportsCricketIcon fontSize="large" color="primary" />,
+      icon: <SportsCricketIcon fontSize="medium" color="primary" />,
       title: t('home.features.expertCoaches.title'),
       description: t('home.features.expertCoaches.description')
     },
     {
-      icon: <AccessTimeIcon fontSize="large" color="primary" />,
+      icon: <AccessTimeIcon fontSize="medium" color="primary" />,
       title: t('home.features.flexibleScheduling.title'),
       description: t('home.features.flexibleScheduling.description')
     },
     {
-      icon: <PeopleIcon fontSize="large" color="primary" />,
+      icon: <PeopleIcon fontSize="medium" color="primary" />,
       title: t('home.features.personalizedTraining.title'),
       description: t('home.features.personalizedTraining.description')
     },
     {
-      icon: <StarIcon fontSize="large" color="primary" />,
+      icon: <StarIcon fontSize="medium" color="primary" />,
       title: t('home.features.qualityAssurance.title'),
       description: t('home.features.qualityAssurance.description')
     }
