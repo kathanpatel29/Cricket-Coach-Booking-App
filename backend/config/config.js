@@ -31,6 +31,18 @@ const config = {
   // Frontend URL (Same for all environments, taken directly from .env)
   frontendURL: process.env.FRONTEND_URL,
 
+  // CORS configuration
+  cors: {
+    getAllowedOrigins: () => {
+      const origins = [config.frontendURL];
+      // Add any additional origins from env if needed
+      if (process.env.ADDITIONAL_CORS_ORIGINS) {
+        origins.push(...process.env.ADDITIONAL_CORS_ORIGINS.split(','));
+      }
+      return origins;
+    }
+  },
+
   // Stripe
   stripe: {
     secretKey: process.env.STRIPE_SECRET_KEY || '',
