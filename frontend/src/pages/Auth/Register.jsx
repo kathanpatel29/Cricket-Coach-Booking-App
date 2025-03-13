@@ -233,7 +233,7 @@ const Register = () => {
       >
         <Paper elevation={3} sx={{ p: 4, width: '100%' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 3 }}>
-            <svg className="w-10 h-10 mr-2 text-blue-600" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+            <svg style={{ width: '24px', height: '24px', marginRight: '8px', color: '#1976d2' }} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
               <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
             </svg>
             <Typography component="h1" variant="h4" fontWeight="bold">
