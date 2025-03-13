@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useTranslation } from 'react-i18next';
 import { 
   AppBar, 
   Toolbar, 
@@ -22,7 +23,6 @@ import MenuIcon from '@mui/icons-material/Menu';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import NotificationDropdown from './Notification/NotificationDropdown';
 import LanguageSwitcher from './LanguageSwitcher';
-import { useTranslation } from 'react-i18next';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
@@ -58,45 +58,46 @@ const Navbar = () => {
   
   // Links based on authentication status
   const authLinks = [
-    { text: 'Dashboard', path: '/dashboard' },
+    { text: t('dashboard.title'), path: '/dashboard' },
   ];
   
   // Role-specific links
   const userLinks = [
     ...authLinks,
-    { text: 'Find Coaches', path: '/coaches' },
-    { text: 'My Bookings', path: '/user/bookings' },
-    { text: 'Pending Payments', path: '/user/bookings/pending-payment' },
+    { text: t('coach.findCoach'), path: '/coaches' },
+    { text: t('booking.title'), path: '/user/bookings' },
+    { text: t('payment.pendingPayments'), path: '/user/bookings/pending-payment' },
   ];
   
   const coachLinks = [
     ...authLinks,
-    { text: 'Set Availability', path: '/coach/availability' },
-    { text: 'Manage Time Slots', path: '/coach/time-slots' },
-    { text: 'Bookings', path: '/coach/bookings' },
-    { text: 'Booking Requests', path: '/coach/booking-requests' },
+    { text: t('coach.setAvailability'), path: '/coach/availability' },
+    { text: t('coach.manageTimeSlots'), path: '/coach/time-slots' },
+    { text: t('booking.title'), path: '/coach/bookings' },
+    { text: t('booking.requests'), path: '/coach/booking-requests' },
   ];
   
   const adminLinks = [
     ...authLinks,
-    { text: 'Manage Users', path: '/admin/users' },
-    { text: 'Manage Coaches', path: '/admin/coaches' }
+    { text: t('admin.manageUsers'), path: '/admin/users' },
+    { text: t('admin.manageCoaches'), path: '/admin/coaches' }
   ];
   
   // Guest links
   const guestLinks = [
-    { text: 'About', path: '/about' },
-    { text: 'Contact', path: '/contact' },
-    { text: 'FAQ', path: '/faq' },
+    { text: t('footer.about'), path: '/about' },
+    { text: t('footer.contact'), path: '/contact' },
+    { text: t('footer.faq'), path: '/faq' },
   ];
   
-  // Use translated text for navigation links
-  const navLinks = [
-    { text: t('app.name'), path: '/' },
-    { text: t('coach.title'), path: '/coaches' },
-    { text: user ? t('booking.title') : null, path: '/bookings' },
-    { text: user?.role === 'admin' ? t('admin.dashboard') : null, path: '/admin' },
-  ].filter(link => link.text !== null);
+  // Determine which links to show based on user role
+  const navLinks = user 
+    ? user.role === 'admin'
+      ? adminLinks
+      : user.role === 'coach'
+        ? coachLinks
+        : userLinks
+    : guestLinks;
 
   return (
     <AppBar position="static" color="default" elevation={1}>
@@ -115,7 +116,7 @@ const Navbar = () => {
           
           {/* Logo */}
           <Link to="/" style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center' }}>
-            <svg className="w-8 h-8 mr-2" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+            <svg className="w-8 h-8 mr-2" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" style={{ width: '24px', height: '24px', marginRight: '8px' }}>
               <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
             </svg>
             <Typography variant="h6" component="div" sx={{ flexGrow: 1, display: { xs: 'none', sm: 'block' } }}>
@@ -140,11 +141,11 @@ const Navbar = () => {
             ))}
           </Box>
           
-          {/* Language Switcher */}
-          <LanguageSwitcher />
-          
           {/* Authentication Buttons */}
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            {/* Language Switcher */}
+            <LanguageSwitcher />
+            
             {user ? (
               <>
                 {/* Notifications */}
@@ -174,16 +175,16 @@ const Navbar = () => {
                   open={Boolean(anchorEl)}
                   onClose={handleMenuClose}
                 >
-                  <MenuItem onClick={() => handleNavigation('/dashboard')}>Dashboard</MenuItem>
-                  <MenuItem onClick={() => handleNavigation('/profile')}>Profile</MenuItem>
+                  <MenuItem onClick={() => handleNavigation('/dashboard')}>{t('dashboard.title')}</MenuItem>
+                  <MenuItem onClick={() => handleNavigation('/profile')}>{t('profile.title')}</MenuItem>
                   <Divider />
-                  <MenuItem onClick={handleLogout}>Logout</MenuItem>
+                  <MenuItem onClick={handleLogout}>{t('auth.logout')}</MenuItem>
                 </Menu>
               </>
             ) : (
               <>
                 <Button color="inherit" component={Link} to="/login">
-                  Login
+                  {t('auth.login')}
                 </Button>
                 <Button 
                   variant="contained" 
@@ -192,7 +193,7 @@ const Navbar = () => {
                   to="/register"
                   sx={{ ml: 1 }}
                 >
-                  Sign Up
+                  {t('auth.signUp')}
                 </Button>
               </>
             )}
@@ -210,8 +211,11 @@ const Navbar = () => {
           sx={{ width: 250 }}
           role="presentation"
         >
-          <Box sx={{ p: 2 }}>
-            <Typography variant="h6" fontWeight="bold">CricCoach</Typography>
+          <Box sx={{ p: 2, display: 'flex', alignItems: 'center' }}>
+            <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" style={{ width: '20px', height: '20px', marginRight: '8px' }}>
+              <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
+            </svg>
+            <Typography variant="h6" fontWeight="bold">{t('app.name')}</Typography>
           </Box>
           <Divider />
           <List>
@@ -232,24 +236,24 @@ const Navbar = () => {
           {!user ? (
             <List>
               <ListItem button onClick={() => handleNavigation('/login')}>
-                <ListItemText primary="Login" />
+                <ListItemText primary={t('auth.login')} />
               </ListItem>
               <ListItem button onClick={() => handleNavigation('/register')}>
-                <ListItemText primary="Register" />
+                <ListItemText primary={t('auth.register')} />
               </ListItem>
             </List>
           ) : (
             <List>
               <ListItem>
                 <Typography variant="body2" color="textSecondary">
-                  Signed in as <strong>{user.name}</strong>
+                  {t('profile.signedInAs')} <strong>{user.name}</strong>
                 </Typography>
               </ListItem>
               <ListItem button onClick={() => handleNavigation('/profile')}>
-                <ListItemText primary="Profile" />
+                <ListItemText primary={t('profile.title')} />
               </ListItem>
               <ListItem button onClick={handleLogout}>
-                <ListItemText primary="Logout" />
+                <ListItemText primary={t('auth.logout')} />
               </ListItem>
             </List>
           )}

@@ -58,6 +58,7 @@ Live Demo: [https://cric-coach-app.vercel.app](https://cric-coach-app.vercel.app
   - English and Hindi languages available
   - Language detection and persistence
   - Easily extensible for additional languages
+  - Language switcher available in the Navbar for seamless language toggling
 
 ## Tech Stack
 
@@ -136,7 +137,7 @@ The application follows a modern client-server architecture:
 - Improved form validation and error messages
 - Added loading indicators and skeleton screens
 - Implemented responsive design for all device sizes
-- Added multi-language support (English and Hindi)
+- Added multi-language support with language switcher in the Navbar (currently supporting English and Hindi)
 
 ## Quick Start
 

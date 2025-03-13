@@ -4,34 +4,36 @@ import FacebookIcon from '@mui/icons-material/Facebook';
 import TwitterIcon from '@mui/icons-material/Twitter';
 import InstagramIcon from '@mui/icons-material/Instagram';
 import LinkedInIcon from '@mui/icons-material/LinkedIn';
+import { useTranslation } from 'react-i18next';
 
 const Footer = () => {
-  const currentYear = new Date().getFullYear();
+  const { t } = useTranslation();
+  const currentYear = 2025;
 
   const footerLinks = [
     {
-      title: 'Company',
+      title: t('footer.company'),
       links: [
-        { name: 'About Us', path: '/about' },
-        { name: 'Contact Us', path: '/contact' },
-        { name: 'Careers', path: '/careers' },
-        { name: 'FAQ', path: '/faq' },
+        { name: t('footer.about'), path: '/about' },
+        { name: t('footer.contact'), path: '/contact' },
+        { name: t('footer.careers'), path: '/careers' },
+        { name: t('footer.faq'), path: '/faq' },
       ],
     },
     {
-      title: 'Legal',
+      title: t('footer.legal'),
       links: [
-        { name: 'Terms of Service', path: '/terms' },
-        { name: 'Privacy Policy', path: '/privacy' },
-        { name: 'Cookie Policy', path: '/cookies' },
+        { name: t('footer.terms'), path: '/terms' },
+        { name: t('footer.privacy'), path: '/privacy' },
+        { name: t('footer.cookies'), path: '/cookies' },
       ],
     },
     {
-      title: 'For Coaches',
+      title: t('footer.forCoaches'),
       links: [
-        { name: 'Become a Coach', path: '/register' },
-        { name: 'Coach Guidelines', path: '/coach-guidelines' },
-        { name: 'Resources', path: '/resources' },
+        { name: t('coach.becomeCoach'), path: '/register' },
+        { name: t('footer.coachGuidelines'), path: '/coach-guidelines' },
+        { name: t('footer.resources'), path: '/resources' },
       ],
     },
   ];
@@ -50,15 +52,15 @@ const Footer = () => {
           {/* Logo and brief description */}
           <Grid item xs={12} md={4}>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-              <svg className="w-8 h-8 mr-2" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+              <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" style={{ width: '24px', height: '24px', marginRight: '8px' }}>
                 <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
               </svg>
               <Typography variant="h6" component="div" fontWeight="bold">
-                CricCoach
+                {t('app.name')}
               </Typography>
             </Box>
             <Typography variant="body2" sx={{ mb: 2 }}>
-              Toronto's premier cricket coaching platform, connecting passionate players with expert coaches.
+              {t('footer.description')}
             </Typography>
             <Stack direction="row" spacing={1}>
               {socialMedia.map((social, index) => (
@@ -100,10 +102,10 @@ const Footer = () => {
 
         <Box sx={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap' }}>
           <Typography variant="body2" sx={{ mb: { xs: 2, md: 0 } }}>
-            &copy; {currentYear} CricCoach. All rights reserved.
+            {t('footer.copyright', { year: currentYear })}
           </Typography>
           <Typography variant="body2">
-            Made with ❤️ in Toronto
+            {t('footer.madeWith')}
           </Typography>
         </Box>
       </Container>

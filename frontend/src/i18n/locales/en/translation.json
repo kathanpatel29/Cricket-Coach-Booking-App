@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "Cricket Coach Booking",
+    "name": "CricCoach",
     "tagline": "Find and book the best cricket coaches"
   },
   "common": {
@@ -166,11 +166,85 @@
     "privacy": "Privacy Policy",
     "faq": "FAQ",
     "help": "Help & Support",
-    "copyright": "© 2023 Cricket Coach Booking. All rights reserved."
+    "copyright": "© 2025 CricCoach. All rights reserved.",
+    "company": "Company",
+    "careers": "Careers",
+    "blog": "Blog",
+    "legal": "Legal",
+    "cookies": "Cookie Policy",
+    "resources": "Resources",
+    "description": "CricCoach is a premier platform connecting cricket enthusiasts with expert coaches for personalized training and skill development.",
+    "madeWith": "Made with ❤️ in Toronto"
   },
   "language": {
     "english": "English",
     "hindi": "Hindi",
     "changeLanguage": "Change Language"
+  },
+  "home": {
+    "hero": {
+      "title": "Find Your Perfect Cricket Coach",
+      "subtitle": "Connect with top cricket coaches in Toronto for personalized training sessions and improve your game."
+    },
+    "whyChooseUs": "Why Choose CricCoach?",
+    "features": {
+      "expertCoaches": {
+        "title": "Expert Coaches",
+        "description": "Learn from certified coaches with years of experience in professional cricket."
+      },
+      "flexibleScheduling": {
+        "title": "Flexible Scheduling",
+        "description": "Book sessions that fit your schedule, with options for weekdays and weekends."
+      },
+      "personalizedTraining": {
+        "title": "Personalized Training",
+        "description": "Get customized coaching plans tailored to your skill level and goals."
+      },
+      "qualityAssurance": {
+        "title": "Quality Assurance",
+        "description": "All coaches are vetted and reviewed to ensure high-quality instruction."
+      }
+    },
+    "howItWorks": {
+      "title": "How It Works",
+      "subtitle": "Getting started with CricCoach is simple and straightforward.",
+      "step1": {
+        "title": "Create an Account",
+        "description": "Sign up and fill in your profile with your cricket experience and goals."
+      },
+      "step2": {
+        "title": "Find a Coach",
+        "description": "Browse coaches based on specialization, experience, and reviews."
+      },
+      "step3": {
+        "title": "Book and Play",
+        "description": "Schedule a session, make a payment, and get ready to improve your cricket skills."
+      },
+      "startNowButton": "Start Now"
+    },
+    "testimonials": {
+      "title": "What Our Users Say",
+      "subtitle": "Don't just take our word for it. Here's what players have to say about their experience.",
+      "user1": {
+        "name": "Michael P.",
+        "role": "Amateur Player",
+        "quote": "After just 5 sessions with my coach, my batting technique improved dramatically. Highly recommend!"
+      },
+      "user2": {
+        "name": "Priya S.",
+        "role": "College Athlete",
+        "quote": "Found an amazing coach who helped me prepare for university trials. Now I'm playing at the collegiate level!"
+      },
+      "user3": {
+        "name": "David L.",
+        "role": "Recreational Player",
+        "quote": "As someone who took up cricket late in life, I found the perfect coach to help me learn the basics."
+      }
+    },
+    "cta": {
+      "title": "Ready to Improve Your Cricket Skills?",
+      "subtitle": "Join thousands of players who have taken their game to the next level with CricCoach.",
+      "buttonText": "Get Started Today"
+    }
   }
 } 
