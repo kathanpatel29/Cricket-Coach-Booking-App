@@ -1,0 +1,48 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "Cricket Coach Booking App Backend",
+  "main": "server.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "vercel-build": "echo 'Building backend'",
+    "deploy": "vercel --prod",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write ."
+  },
+  "keywords": [],
+  "author": "Kathan Patel",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "3.0.1",
+    "compression": "1.8.0",
+    "cors": "2.8.5",
+    "date-fns": "^4.1.0",
+    "dotenv": "16.4.7",
+    "exceljs": "^4.4.0",
+    "express": "4.21.2",
+    "express-async-handler": "1.2.0",
+    "express-mongo-sanitize": "^2.2.0",
+    "express-rate-limit": "7.5.0",
+    "express-validator": "7.2.1",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "9.0.2",
+    "mongoose": "8.10.1",
+    "morgan": "^1.10.0",
+    "multer": "^1.4.5-lts.1",
+    "nodemailer": "6.10.0",
+    "stripe": "17.6.0",
+    "xss-clean": "^0.1.4"
+  },
+  "devDependencies": {
+    "eslint": "^9.20.1",
+    "eslint-config-prettier": "^10.0.1",
+    "nodemon": "3.1.9",
+    "prettier": "^3.5.1"
+  }
+}
