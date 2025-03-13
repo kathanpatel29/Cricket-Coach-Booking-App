@@ -2,13 +2,13 @@
   "version": 2,
   "builds": [
     {
-      "src": "server.js",
+      "src": "./server.js",
       "use": "@vercel/node"
     }
   ],
   "routes": [
     {
-      "src": "/api/(.*)",
+      "src": "/(.*)",
       "dest": "/server.js",
       "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
       "headers": {
@@ -19,9 +19,5 @@
       }
     }
   ],
-  "env": {
-    "NODE_ENV": "production"
-  },
-  "regions": ["bom1"],
   "outputDirectory": "dist"
 }
