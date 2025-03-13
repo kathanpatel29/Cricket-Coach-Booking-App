@@ -28,7 +28,8 @@ import {
   DialogContentText,
   DialogActions,
   TextField,
-  Snackbar
+  Snackbar,
+  Rating
 } from '@mui/material';
 import { Link, useNavigate } from 'react-router-dom';
 import PeopleIcon from '@mui/icons-material/People';
@@ -37,6 +38,49 @@ import SportsIcon from '@mui/icons-material/Sports';
 import BookOnlineIcon from '@mui/icons-material/BookOnline';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import StarIcon from '@mui/icons-material/Star';
+import { format, parseISO, isValid } from 'date-fns';
+import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+
+// Add a safe date formatting function
+const formatSafeDate = (booking) => {
+  if (!booking) return 'N/A';
+  
+  // Check all possible date fields in order of preference
+  const possibleDateFields = [
+    booking.date,
+    booking.bookingDate,
+    booking.sessionDate,
+    booking.timeSlot?.date,
+    booking.createdAt
+  ];
+  
+  // Try each field until we find a valid date
+  for (const dateField of possibleDateFields) {
+    if (!dateField) continue;
+    
+    try {
+      // Try as an ISO string
+      const date = parseISO(dateField);
+      if (isValid(date)) {
+        return format(date, 'MMM d, yyyy');
+      }
+      
+      // Try as a regular date string/timestamp
+      const regularDate = new Date(dateField);
+      if (isValid(regularDate)) {
+        return format(regularDate, 'MMM d, yyyy');
+      }
+    } catch (err) {
+      console.warn('Error formatting date field:', dateField, err);
+      // Continue to the next field
+    }
+  }
+  
+  // If we reach here, none of the date fields worked
+  console.warn('No valid date found in booking:', booking);
+  return 'Invalid date';
+};
 
 // Reusable components to reduce duplication
 const StatsCard = ({ icon, value, label, color = "primary" }) => (
@@ -53,210 +97,155 @@ const StatsCard = ({ icon, value, label, color = "primary" }) => (
   </Card>
 );
 
-const DashboardSection = ({ title, children, action, actionLink, actionText = "View All" }) => (
-  <Paper sx={{ p: 3, height: '100%' }}>
-    <Typography variant="h6" gutterBottom>
-      {title}
-    </Typography>
-    <Divider sx={{ mb: 2 }} />
-    
-    {children}
-    
-    {action && (
-      <Box sx={{ mt: 2, textAlign: 'right' }}>
-        <Button 
-          variant="outlined" 
-          component={Link} 
-          to={actionLink}
-          size="small"
-        >
-          {actionText}
-        </Button>
+// DashboardSection component for consistent styling
+const DashboardSection = ({ title, children, action, actionText, actionLink }) => {
+  return (
+    <Paper sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        mb: 2 
+      }}>
+        <Typography variant="h6" component="h2">
+          {title}
+        </Typography>
+        {action && (
+          <Button 
+            variant="contained" 
+            color="primary" 
+            size="small" 
+            component={Link} 
+            to={actionLink}
+            startIcon={actionText.includes('View') ? <VisibilityIcon /> : null}
+          >
+            {actionText}
+          </Button>
+        )}
       </Box>
-    )}
-  </Paper>
-);
+      <Box sx={{ flexGrow: 1 }}>
+        {children}
+      </Box>
+    </Paper>
+  );
+};
 
 const AdminDashboard = () => {
-  const { user } = useAuth();
   const navigate = useNavigate();
-  const [dashboardData, setDashboardData] = useState(null);
+  const { user } = useAuth();
+  const [data, setData] = useState({
+    pendingCoaches: [],
+    recentUsers: [],
+    recentBookings: [],
+    recentReviews: [],
+    stats: {
+      totalUsers: 0,
+      totalCoaches: 0,
+      totalBookings: 0,
+      totalRevenue: 0
+    },
+    revenue: null
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [actionLoading, setActionLoading] = useState(false);
-  
-  // State for reject dialog
-  const [openRejectDialog, setOpenRejectDialog] = useState(false);
-  const [selectedCoach, setSelectedCoach] = useState(null);
+  const [openDialog, setOpenDialog] = useState(false);
+  const [currentCoach, setCurrentCoach] = useState(null);
   const [rejectionReason, setRejectionReason] = useState('');
-  
-  // State for notifications
-  const [notification, setNotification] = useState({
-    open: false,
-    message: '',
-    severity: 'success'
-  });
+  const [notification, setNotification] = useState({ open: false, message: '', severity: 'success' });
+
+  // Keep approval/rejection dialog handlers
+  const handleOpenApprovalDialog = (coach) => {
+    setCurrentCoach(coach);
+    setOpenDialog(true);
+  };
+
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
+    setCurrentCoach(null);
+    setRejectionReason('');
+  };
+
+  const handleApproveCoach = async (coachId) => {
+    try {
+      await adminApi.approveCoach(coachId);
+      setData(prevData => ({
+        ...prevData,
+        pendingCoaches: prevData.pendingCoaches.filter(coach => coach.id !== coachId)
+      }));
+      setNotification({ open: true, message: 'Coach approved successfully', severity: 'success' });
+    } catch (error) {
+      console.error('Error approving coach:', error);
+      setNotification({ open: true, message: 'Failed to approve coach', severity: 'error' });
+    }
+    handleCloseDialog();
+  };
+
+  const handleRejectCoach = async (coachId) => {
+    try {
+      await adminApi.rejectCoach(coachId, { reason: rejectionReason });
+      setData(prevData => ({
+        ...prevData,
+        pendingCoaches: prevData.pendingCoaches.filter(coach => coach.id !== coachId)
+      }));
+      setNotification({ open: true, message: 'Coach application rejected', severity: 'success' });
+    } catch (error) {
+      console.error('Error rejecting coach:', error);
+      setNotification({ open: true, message: 'Failed to reject coach', severity: 'error' });
+    }
+    handleCloseDialog();
+  };
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
         const response = await adminApi.getAdminDashboard();
-        console.log('Admin Dashboard API Response:', response.data);
+        const dashboardData = response.data.data;
         
-        // Set the dashboard data with proper structure
-        const initialData = response.data.data || {
+        // Create a structured data object with all required properties
+        const initialData = {
           stats: {
-            totalUsers: 0,
-            totalCoaches: 0,
-            pendingCoaches: 0,
-            totalBookings: 0,
-            totalRevenue: 0,
-            averageRating: 0
+            totalUsers: dashboardData?.stats?.totalUsers || 0,
+            totalCoaches: dashboardData?.stats?.totalCoaches || 0,
+            pendingCoaches: dashboardData?.stats?.pendingCoaches || 0,
+            totalBookings: dashboardData?.stats?.totalBookings || 0,
+            totalRevenue: dashboardData?.stats?.totalRevenue || 0,
+            averageRating: dashboardData?.stats?.averageRating || 0
           },
-          recentUsers: [],
-          pendingCoaches: [],
-          recentBookings: [],
-          activeCoaches: 0
+          recentUsers: dashboardData?.recentUsers || [],
+          pendingCoaches: dashboardData?.pendingCoaches || [],
+          recentBookings: dashboardData?.recentBookings || [],
+          recentReviews: dashboardData?.recentReviews || [],
+          revenue: dashboardData?.revenue || {
+            totalRevenue: 0,
+            weeklyRevenue: 0,
+            completedBookings: 0,
+            pendingPayments: 0,
+            platformFees: 0
+          }
         };
         
-        setDashboardData(initialData);
+        setData(initialData);
         setError(null);
       } catch (err) {
-        console.error('Error fetching dashboard data:', err);
-        setError('Failed to load dashboard data. Please try again later.');
+        console.error("Error fetching admin dashboard data:", err);
+        setError(err.message || "Failed to load dashboard data");
       } finally {
         setLoading(false);
       }
     };
 
-    if (user) {
+    if (user && user.role === 'admin') {
       fetchDashboardData();
     }
   }, [user]);
   
-  // Approve coach handler
-  const handleApproveCoach = async (coachId) => {
-    try {
-      setActionLoading(true);
-      await adminApi.approveCoach(coachId);
-      
-      // Show success notification
-      setNotification({
-        open: true,
-        message: 'Coach application approved successfully',
-        severity: 'success'
-      });
-      
-      // Refresh dashboard data
-      const response = await adminApi.getAdminDashboard();
-      setDashboardData(response.data.data);
-    } catch (err) {
-      console.error('Error approving coach:', err);
-      setNotification({
-        open: true,
-        message: `Failed to approve coach: ${err.response?.data?.message || 'Unknown error'}`,
-        severity: 'error'
-      });
-    } finally {
-      setActionLoading(false);
+  // Add a debugging effect to log booking data
+  useEffect(() => {
+    if (data && data.recentBookings && data.recentBookings.length > 0) {
+      console.log('Recent booking data structure:', data.recentBookings[0]);
     }
-  };
-  
-  // Open reject dialog
-  const handleOpenRejectDialog = (coach) => {
-    if (!coach || !coach.id) {
-      console.error('Cannot open rejection dialog: Invalid coach data', coach);
-      setNotification({
-        open: true,
-        message: 'Cannot process this coach application due to missing data',
-        severity: 'error'
-      });
-      return;
-    }
-    setSelectedCoach(coach);
-    setRejectionReason('');
-    setOpenRejectDialog(true);
-  };
-  
-  // Close reject dialog
-  const handleCloseRejectDialog = () => {
-    setOpenRejectDialog(false);
-    // Delay clearing the coach data until the dialog animation completes
-    setTimeout(() => setSelectedCoach(null), 300);
-    setRejectionReason('');
-  };
-  
-  // Reject coach handler
-  const handleRejectCoach = async () => {
-    try {
-      if (!rejectionReason.trim()) {
-        setNotification({
-          open: true,
-          message: 'Please provide a reason for rejection',
-          severity: 'error'
-        });
-        return;
-      }
-      
-      if (!selectedCoach || !selectedCoach.id) {
-        setNotification({
-          open: true,
-          message: 'Cannot reject: Coach data is missing or invalid',
-          severity: 'error'
-        });
-        handleCloseRejectDialog();
-        return;
-      }
-      
-      setActionLoading(true);
-      await adminApi.rejectCoach(selectedCoach.id, { reason: rejectionReason })
-        .catch(error => {
-          console.error('Error from rejection API:', error);
-          throw new Error(error.response?.data?.message || error.message || 'Server error');
-        });
-      
-      // Show success notification
-      setNotification({
-        open: true,
-        message: 'Coach application rejected successfully',
-        severity: 'success'
-      });
-      
-      // Close dialog
-      handleCloseRejectDialog();
-      
-      // Refresh dashboard data
-      setTimeout(async () => {
-        try {
-          const response = await adminApi.getAdminDashboard();
-          setDashboardData(response.data.data);
-        } catch (refreshError) {
-          console.error('Error refreshing dashboard data:', refreshError);
-          // Don't show another notification for this secondary error
-        }
-      }, 500);
-    } catch (err) {
-      console.error('Error rejecting coach:', err);
-      setNotification({
-        open: true,
-        message: `Failed to reject coach: ${err.message || 'Unknown error'}`,
-        severity: 'error'
-      });
-    } finally {
-      setActionLoading(false);
-    }
-  };
-  
-  // Handle notification close
-  const handleCloseNotification = () => {
-    setNotification({ ...notification, open: false });
-  };
-  
-  // Navigate to manage coaches page
-  const handleViewAllCoaches = () => {
-    navigate('/admin/coaches');
-  };
+  }, [data]);
 
   if (loading) {
     return (
@@ -275,22 +264,6 @@ const AdminDashboard = () => {
   }
 
   // Safely access data with fallbacks
-  const data = dashboardData || {
-    stats: {
-      totalUsers: 0,
-      totalCoaches: 0,
-      pendingCoaches: 0,
-      totalBookings: 0,
-      totalRevenue: 0,
-      averageRating: 0
-    },
-    recentUsers: [],
-    pendingCoaches: [],
-    recentBookings: [],
-    activeCoaches: 0
-  };
-
-  // Use optional chaining for safe property access
   const stats = data.stats || {};
   const pendingCoachCount = stats.pendingCoaches || 0;
 
@@ -395,80 +368,87 @@ const AdminDashboard = () => {
         <Grid item xs={12} md={6}>
           <DashboardSection 
             title="Coach Applications" 
-            actionLink="/admin/coaches" 
             action={true}
             actionText="Manage All Coaches"
+            actionLink="/admin/coaches"
           >
             {pendingCoachCount > 0 ? (
-              <>
-                <Box sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
-                  <Typography variant="subtitle1" color="warning.main" sx={{ mr: 1 }}>
-                    {pendingCoachCount} pending {pendingCoachCount === 1 ? 'application' : 'applications'} awaiting review
-                  </Typography>
-                </Box>
+              <Box sx={{ width: '100%' }}>
+                <Typography variant="subtitle1" color="warning.main" sx={{ mb: 2, textAlign: 'center' }}>
+                  {pendingCoachCount} pending {pendingCoachCount === 1 ? 'application' : 'applications'} awaiting review
+                </Typography>
                 
-                {data.pendingCoaches && data.pendingCoaches.length > 0 ? (
-                  <TableContainer>
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>Coach Name</TableCell>
-                          <TableCell>Email</TableCell>
-                          <TableCell>Experience</TableCell>
-                          <TableCell>Actions</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {data.pendingCoaches
-                          .filter(coach => coach.name && coach.email) // Filter out coaches without name or email
-                          .map((coach) => (
-                          <TableRow key={coach.id}>
-                            <TableCell>{coach.name}</TableCell>
-                            <TableCell>{coach.email}</TableCell>
-                            <TableCell>{coach.experience ? `${coach.experience} years` : 'Not specified'}</TableCell>
-                            <TableCell>
-                              <Stack direction="row" spacing={1}>
-                                <Button 
-                                  size="small" 
-                                  variant="outlined" 
-                                  color="success"
-                                  onClick={() => handleApproveCoach(coach.id)}
-                                  disabled={actionLoading}
-                                >
-                                  Approve
-                                </Button>
-                                <Button 
-                                  size="small" 
-                                  variant="outlined" 
-                                  color="error"
-                                  onClick={() => handleOpenRejectDialog(coach)}
-                                  disabled={actionLoading}
-                                >
-                                  Reject
-                                </Button>
-                              </Stack>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                ) : (
-                  <Box sx={{ textAlign: 'center', py: 3 }}>
-                    <Typography variant="body1" color="text.secondary">
-                      No valid pending coach applications to display.
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                      There may be applications with incomplete profile information.
-                    </Typography>
-                  </Box>
+                {data.pendingCoaches && data.pendingCoaches.length > 0 && (
+                  <List sx={{ width: '100%' }}>
+                    {data.pendingCoaches.slice(0, 3).map((coach) => (
+                      <ListItem key={coach.id} sx={{ 
+                        border: '1px solid #eee', 
+                        borderRadius: 1, 
+                        mb: 1.5, 
+                        p: 0,
+                        display: 'block',
+                        width: '100%'
+                      }}>
+                        <Box sx={{ p: 2 }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                            <Typography variant="subtitle1">{coach.name}</Typography>
+                            <Chip size="small" label={`${coach.experience || 0} years`} color="primary" />
+                          </Box>
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>{coach.email}</Typography>
+                          
+                          <Box sx={{ 
+                            mt: 'auto', 
+                            display: 'flex', 
+                            justifyContent: 'flex-end', 
+                            gap: 1, 
+                            borderTop: '1px solid #eee',
+                            pt: 1.5
+                          }}>
+                            <Button 
+                              size="small" 
+                              variant="outlined" 
+                              color="success"
+                              onClick={() => handleApproveCoach(coach.id)}
+                            >
+                              Approve
+                            </Button>
+                            <Button 
+                              size="small" 
+                              variant="outlined" 
+                              color="error"
+                              onClick={() => handleOpenApprovalDialog(coach)}
+                            >
+                              Reject
+                            </Button>
+                          </Box>
+                        </Box>
+                      </ListItem>
+                    ))}
+                  </List>
                 )}
-              </>
+              </Box>
             ) : (
-              <Box sx={{ textAlign: 'center', py: 3 }}>
-                <Typography variant="body1" color="text.secondary">
+              <Box sx={{ 
+                textAlign: 'center', 
+                py: 5, 
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                height: '100%'
+              }}>
+                <SportsIcon sx={{ fontSize: 40, color: 'text.secondary', mb: 2 }} />
+                <Typography variant="body1" color="text.secondary" gutterBottom>
                   No pending coach applications.
                 </Typography>
+                <Button 
+                  variant="contained" 
+                  component={Link} 
+                  to="/admin/coaches"
+                  sx={{ mt: 2 }}
+                >
+                  Manage Coaches
+                </Button>
               </Box>
             )}
           </DashboardSection>
@@ -478,50 +458,65 @@ const AdminDashboard = () => {
         <Grid item xs={12} md={6}>
           <DashboardSection 
             title="Recent Users" 
-            actionLink="/admin/users" 
             action={true}
             actionText="Manage All Users"
+            actionLink="/admin/users"
           >
             {data.recentUsers && data.recentUsers.length > 0 ? (
-              <TableContainer>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Name</TableCell>
-                      <TableCell>Email</TableCell>
-                      <TableCell>Role</TableCell>
-                      <TableCell>Joined On</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {data.recentUsers.map((user) => (
-                      <TableRow key={user.id}>
-                        <TableCell>{user.name}</TableCell>
-                        <TableCell>{user.email}</TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={user.role} 
-                            color={
-                              user.role === 'admin' 
-                                ? 'secondary' 
-                                : user.role === 'coach' 
-                                  ? 'primary' 
-                                  : 'default'
-                            }
-                            size="small"
-                          />
-                        </TableCell>
-                        <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+              <List sx={{ width: '100%' }}>
+                {data.recentUsers.slice(0, 5).map((user) => (
+                  <ListItem key={user.id} sx={{ 
+                    borderBottom: '1px solid #eee', 
+                    py: 1.5,
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    width: '100%'
+                  }}>
+                    <Box>
+                      <Typography variant="subtitle2">{user.name}</Typography>
+                      <Typography variant="body2" color="text.secondary">{user.email}</Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Chip 
+                        label={user.role} 
+                        color={
+                          user.role === 'admin' 
+                            ? 'secondary' 
+                            : user.role === 'coach' 
+                              ? 'primary' 
+                              : 'default'
+                        }
+                        size="small"
+                      />
+                      <Typography variant="caption" color="text.secondary">
+                        {new Date(user.createdAt).toLocaleDateString()}
+                      </Typography>
+                    </Box>
+                  </ListItem>
+                ))}
+              </List>
             ) : (
-              <Box sx={{ textAlign: 'center', py: 3 }}>
-                <Typography variant="body1" color="text.secondary">
-                  No recent users.
+              <Box sx={{ 
+                textAlign: 'center', 
+                py: 5, 
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                height: '100%'
+              }}>
+                <PeopleIcon sx={{ fontSize: 40, color: 'text.secondary', mb: 2 }} />
+                <Typography variant="body1" color="text.secondary" gutterBottom>
+                  No users registered in the system yet.
                 </Typography>
+                <Button 
+                  variant="contained" 
+                  component={Link}
+                  to="/admin/users"
+                  sx={{ mt: 2 }}
+                >
+                  Manage Users
+                </Button>
               </Box>
             )}
           </DashboardSection>
@@ -531,54 +526,109 @@ const AdminDashboard = () => {
         <Grid item xs={12} md={6}>
           <DashboardSection 
             title="Recent Bookings" 
-            actionLink="/admin/bookings" 
             action={true}
             actionText="View All Bookings"
+            actionLink="/admin/bookings"
           >
-            {data.recentBookings && data.recentBookings.length > 0 ? (
-              <TableContainer>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>User</TableCell>
-                      <TableCell>Coach</TableCell>
-                      <TableCell>Date</TableCell>
-                      <TableCell>Status</TableCell>
-                      <TableCell>Amount</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {data.recentBookings.map((booking) => (
-                      <TableRow key={booking.id}>
-                        <TableCell>{booking.userName}</TableCell>
-                        <TableCell>{booking.coachName}</TableCell>
-                        <TableCell>{new Date(booking.date).toLocaleDateString()}</TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={booking.status} 
-                            color={
-                              booking.status === 'completed' 
-                                ? 'success' 
-                                : booking.status === 'pending' 
-                                  ? 'warning' 
-                                  : booking.status === 'cancelled' 
-                                    ? 'error' 
-                                    : 'default'
-                            }
-                            size="small"
-                          />
-                        </TableCell>
-                        <TableCell>${booking.amount}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+            <Box sx={{ 
+              textAlign: 'center', 
+              py: 3, 
+              display: 'flex', 
+              flexDirection: 'column', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              height: '100%'
+            }}>
+              <BookOnlineIcon sx={{ fontSize: 40, color: 'primary.main', mb: 2 }} />
+              <Typography variant="body1" gutterBottom>
+                {data.recentBookings && data.recentBookings.length > 0 
+                  ? `${data.recentBookings.length} recent bookings available` 
+                  : 'No bookings in the system yet.'}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Click "View All Bookings" to manage bookings.
+              </Typography>
+              <Button 
+                variant="contained" 
+                component={Link}
+                to="/admin/bookings"
+                startIcon={<VisibilityIcon />}
+              >
+                View All Bookings
+              </Button>
+            </Box>
+          </DashboardSection>
+        </Grid>
+        
+        {/* Recent Reviews Section */}
+        <Grid item xs={12} md={6}>
+          <DashboardSection 
+            title="Recent Reviews" 
+            action={true}
+            actionText="Moderate All Reviews"
+            actionLink="/admin/reviews"
+          >
+            {data.recentReviews && data.recentReviews?.length > 0 ? (
+              <List sx={{ width: '100%' }}>
+                {data.recentReviews.slice(0, 5).map((review) => (
+                  <ListItem key={review.id} sx={{ 
+                    borderBottom: '1px solid #eee', 
+                    py: 1.5,
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    width: '100%'
+                  }}>
+                    <Box>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <Typography variant="subtitle2">{review.userName || 'User'}</Typography>
+                        <Typography variant="body2" color="text.secondary">→</Typography>
+                        <Typography variant="subtitle2">{review.coachName || 'Coach'}</Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <Rating value={review.rating || 0} readOnly size="small" />
+                        <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                          {new Date(review.createdAt).toLocaleDateString()}
+                        </Typography>
+                      </Box>
+                    </Box>
+                    <Chip 
+                      label={review.status} 
+                      color={
+                        review.status === 'approved' 
+                          ? 'success' 
+                          : review.status === 'pending'
+                            ? 'warning' 
+                            : review.status === 'rejected'
+                              ? 'error' 
+                              : 'default'
+                      }
+                      size="small"
+                    />
+                  </ListItem>
+                ))}
+              </List>
             ) : (
-              <Box sx={{ textAlign: 'center', py: 3 }}>
-                <Typography variant="body1" color="text.secondary">
-                  No recent bookings.
+              <Box sx={{ 
+                textAlign: 'center', 
+                py: 5, 
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                height: '100%'
+              }}>
+                <StarIcon sx={{ fontSize: 40, color: 'text.secondary', mb: 2 }} />
+                <Typography variant="body1" color="text.secondary" gutterBottom>
+                  No reviews submitted yet.
                 </Typography>
+                <Button 
+                  variant="contained" 
+                  component={Link}
+                  to="/admin/reviews"
+                  sx={{ mt: 2 }}
+                >
+                  Moderate Reviews
+                </Button>
               </Box>
             )}
           </DashboardSection>
@@ -586,12 +636,12 @@ const AdminDashboard = () => {
       </Grid>
       
       {/* Reject Coach Dialog */}
-      <Dialog open={openRejectDialog} onClose={handleCloseRejectDialog}>
+      <Dialog open={openDialog} onClose={handleCloseDialog}>
         <DialogTitle>Reject Coach Application</DialogTitle>
         <DialogContent>
           <DialogContentText>
             Please provide a reason for rejecting the coach application from{' '}
-            {selectedCoach?.name || 'this coach'}.
+            {currentCoach?.name || 'this coach'}.
             This reason will be shared with the applicant.
           </DialogContentText>
           <TextField
@@ -610,15 +660,15 @@ const AdminDashboard = () => {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseRejectDialog} color="primary" disabled={actionLoading}>
+          <Button onClick={handleCloseDialog} color="primary">
             Cancel
           </Button>
           <Button 
-            onClick={handleRejectCoach} 
+            onClick={() => handleRejectCoach(currentCoach?.id)} 
             color="error" 
-            disabled={!rejectionReason.trim() || actionLoading || !selectedCoach}
+            disabled={!rejectionReason.trim() || !currentCoach}
           >
-            {actionLoading ? 'Rejecting...' : 'Reject'}
+            Reject
           </Button>
         </DialogActions>
       </Dialog>
@@ -627,11 +677,11 @@ const AdminDashboard = () => {
       <Snackbar
         open={notification.open}
         autoHideDuration={6000}
-        onClose={handleCloseNotification}
+        onClose={() => setNotification({ ...notification, open: false })}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
         <Alert 
-          onClose={handleCloseNotification} 
+          onClose={() => setNotification({ ...notification, open: false })} 
           severity={notification.severity}
           variant="filled"
           sx={{ width: '100%' }}

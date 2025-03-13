@@ -554,7 +554,55 @@ export const adminApi = {
   moderateReview: (id, moderationData) => api.put(`/admin/reviews/${id}/moderate`, moderationData),
   
   // Booking Management
-  getAllBookings: (params) => api.get('/admin/bookings', { params }),
+  getAllBookings: (params) => {
+    return api.get('/admin/bookings', { params })
+      .then(response => {
+        // Log the raw response for debugging
+        console.log('Admin getAllBookings raw response:', response.data);
+        
+        if (response.data.status === 'success' && response.data.data && response.data.data.bookings) {
+          // Map the bookings to include necessary fields for frontend display
+          const mappedBookings = response.data.data.bookings.map(booking => {
+            // Extract coach and user information
+            const coachName = booking.coach?.user?.name || 'Unknown Coach';
+            const userName = booking.user?.name || 'Unknown User';
+            
+            // Extract TimeSlot information if available
+            let timeSlotData = null;
+            if (booking.timeSlot) {
+              timeSlotData = {
+                date: booking.timeSlot.date,
+                startTime: booking.timeSlot.startTime,
+                endTime: booking.timeSlot.endTime,
+                duration: booking.timeSlot.duration
+              };
+            }
+            
+            // Create a normalized booking object with all necessary fields
+            return {
+              ...booking,
+              coachName,
+              userName,
+              timeSlotData,
+              // Add explicit fields for easier access in frontend
+              date: booking.timeSlot?.date || booking.date || null,
+              startTime: booking.timeSlot?.startTime || null,
+              endTime: booking.timeSlot?.endTime || null,
+              duration: booking.timeSlot?.duration || null
+            };
+          });
+          
+          // Replace the original bookings array with our enhanced version
+          response.data.data.bookings = mappedBookings;
+        }
+        
+        return response;
+      })
+      .catch(error => {
+        console.error('Error fetching admin bookings:', error);
+        throw error;
+      });
+  },
   getBookingById: (id) => api.get(`/admin/bookings/${id}`),
   updateBookingStatus: (id, statusData) => api.put(`/admin/bookings/${id}/status`, statusData),
   

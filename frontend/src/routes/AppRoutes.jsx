@@ -151,6 +151,7 @@ const AppRoutes = () => {
             <Route path="coaches" element={<ManageCoaches />} />
             <Route path="users" element={<ManageUsers />} />
             <Route path="reviews" element={<ModerateReviews />} />
+            <Route path="bookings" element={<MyBookings />} />
             
             {/* Fallback for any undefined admin routes */}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />

@@ -258,6 +258,13 @@ export const NotificationProvider = ({ children }) => {
   const deleteNotification = useCallback(async (notificationId) => {
     if (!isAuthenticated || !user) return;
     
+    console.log('Delete notification called with ID:', notificationId);
+    
+    if (!notificationId) {
+      console.error('Cannot delete notification: Missing ID');
+      return;
+    }
+    
     const deleteApi = user.role === 'admin' 
       ? adminApi.deleteNotification
       : user.role === 'coach'
@@ -265,14 +272,22 @@ export const NotificationProvider = ({ children }) => {
         : userApi.deleteUserNotification;
     
     try {
-      // Find the notification before deleting it
-      const deletedNotification = notifications.find(n => n.id === notificationId);
-      if (!deletedNotification) return;
+      // Find notification by either id or _id
+      const deletedNotification = notifications.find(n => 
+        (n.id && n.id === notificationId) || (n._id && n._id === notificationId)
+      );
+      
+      if (!deletedNotification) {
+        console.warn('Notification not found in state:', notificationId);
+        // Proceed anyway since it might be a sync issue
+      }
       
       const wasUnread = deletedNotification && !deletedNotification.read;
       
-      // Optimistically update UI
-      setNotifications(prev => prev.filter(n => n.id !== notificationId));
+      // Optimistically update UI (filter by either id or _id)
+      setNotifications(prev => prev.filter(n => 
+        (n.id !== notificationId) && (n._id !== notificationId)
+      ));
       
       if (wasUnread) {
         setUnreadCount(prev => Math.max(0, prev - 1));
@@ -281,7 +296,7 @@ export const NotificationProvider = ({ children }) => {
       // Update cache with optimistic update
       const cachedData = getCachedData(NOTIFICATION_CACHE_KEY);
       if (isCachedDataValid(cachedData)) {
-        const updatedNotifications = cachedData.notifications.filter(n => n.id !== notificationId);
+        const updatedNotifications = cachedData.notifications.filter(n => (n.id || n._id) !== notificationId);
         const updatedCount = wasUnread 
           ? Math.max(0, cachedData.unreadCount - 1) 
           : cachedData.unreadCount;

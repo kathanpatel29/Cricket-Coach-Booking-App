@@ -122,12 +122,44 @@ exports.rejectCoach = catchAsync(async (req, res) => {
  * @access Private/Admin
  */
 exports.getAllBookings = catchAsync(async (req, res) => {
+  // Enhance query to fully populate the required fields
   const bookings = await Booking.find()
     .populate('user', 'name email')
-    .populate('coach', 'user')
+    .populate({
+      path: 'coach',
+      select: 'user hourlyRate',
+      populate: {
+        path: 'user',
+        select: 'name email profileImage'
+      }
+    })
+    .populate('timeSlot')
     .sort('-createdAt');
 
-  res.json(formatResponse('success', 'Bookings retrieved successfully', { bookings }));
+  // Process bookings to ensure consistent data structure
+  const processedBookings = bookings.map(booking => {
+    const bookingObj = booking.toObject();
+    
+    // Add convenient direct fields
+    if (booking.timeSlot) {
+      bookingObj.date = booking.timeSlot.date;
+      bookingObj.startTime = booking.timeSlot.startTime;
+      bookingObj.endTime = booking.timeSlot.endTime;
+      bookingObj.duration = booking.timeSlot.duration;
+    }
+    
+    // Ensure coach name is accessible
+    const coachName = booking.coach?.user?.name || 'Unknown Coach';
+    bookingObj.coachName = coachName;
+    
+    // Ensure user name is accessible
+    const userName = booking.user?.name || 'Unknown User';
+    bookingObj.userName = userName;
+    
+    return bookingObj;
+  });
+
+  res.json(formatResponse('success', 'Bookings retrieved successfully', { bookings: processedBookings }));
 });
 
 /**

@@ -14,26 +14,42 @@ const app = express();
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Simplified CORS configuration
+// Define allowed origins explicitly
+const allowedOrigins = [
+  "http://localhost:3000", // Local frontend
+  "http://localhost:5000", // Local backend (if applicable)
+  "https://food-delivery-phi-umber.vercel.app", // Production frontend
+  "https://food-delivery-1x6h.vercel.app", // Admin panel
+  "https://food-delivery-backend-beta.vercel.app" // Production backend
+];
+
 const corsOptions = {
   origin: (origin, callback) => {
-    const allowedOrigins = config.cors.getAllowedOrigins();
-    // Allow requests with no origin (like mobile apps, curl requests)
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+    if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
       console.warn(`CORS blocked: ${origin}`);
-      callback(new Error('Not allowed by CORS'));
+      callback(new Error("Not allowed by CORS"));
     }
   },
-  credentials: true,
+  credentials: true, // Allows cookies & authorization headers
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+    "X-Requested-With",
+    "Accept",
+    "Origin",
+    "X-Custom-Header",
+    "Cache-Control",
+  ],
+  exposedHeaders: ["Authorization", "X-Custom-Header", "Cache-Control"], // Allow frontend access to custom headers
+  optionsSuccessStatus: 204 // Prevents issues with preflight requests
 };
 
 // Apply CORS middleware
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
+app.options('*', cors(corsOptions)); // Handle preflight requests
 
 // Apply security middleware
 securityMiddleware(app);
@@ -55,10 +71,10 @@ const coachRoutes = require("./routes/coach");
 const adminRoutes = require("./routes/admin");
 
 // Route Middleware - Organized by role
-app.use("/api/public", publicRoutes);  // Public routes (no auth required)
-app.use("/api/user", userRoutes);      // User-specific routes
-app.use("/api/coach", coachRoutes);    // Coach-specific routes
-app.use("/api/admin", adminRoutes);    // Admin-specific routes
+app.use("/api/public", publicRoutes);
+app.use("/api/user", userRoutes);
+app.use("/api/coach", coachRoutes);
+app.use("/api/admin", adminRoutes);
 
 // Error Middleware
 app.use(errorMiddleware);
@@ -66,7 +82,8 @@ app.use(errorMiddleware);
 // Start Server
 const PORT = config.port;
 const server = app.listen(PORT, () => 
-  console.log(`Server running on port ${PORT} in ${config.env} mode`));
+  console.log(`Server running on port ${PORT} in ${config.env} mode`)
+);
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err) => {

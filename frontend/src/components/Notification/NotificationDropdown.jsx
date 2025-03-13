@@ -190,10 +190,10 @@ const NotificationDropdown = () => {
   };
   
   // Handle notification deletion
-  const handleDelete = async (e, notificationId) => {
+  const handleDelete = async (e, notification) => {
     e.stopPropagation();
     try {
-      await deleteNotification(notificationId);
+      await deleteNotification(notification._id || notification.id);
     } catch (error) {
       console.error('Error deleting notification:', error);
       setRefreshError('Failed to delete notification');
@@ -212,6 +212,13 @@ const NotificationDropdown = () => {
   // Determine if a recent sync has occurred
   const isRecentSync = lastSyncTime && 
     (new Date().getTime() - new Date(lastSyncTime).getTime() < 2 * 60000); // Within the last 2 minutes
+  
+  // Near the beginning of your component
+  useEffect(() => {
+    if (notifications.length > 0) {
+      console.log('Notification example:', notifications[0]);
+    }
+  }, [notifications]);
   
   return (
     <>
@@ -287,6 +294,9 @@ const NotificationDropdown = () => {
           <>
             <List sx={{ pt: 0, pb: 0, maxHeight: '50vh', overflow: 'auto' }}>
               {notifications.map((notification, index) => {
+                // Add this debug line
+                console.log('Notification data:', notification);
+                
                 // Check if this is the first unread notification
                 const isFirstUnread = !notification.read && 
                   notifications.findIndex(n => !n.read) === index;
@@ -356,7 +366,7 @@ const NotificationDropdown = () => {
                           <IconButton 
                             edge="end" 
                             aria-label="delete"
-                            onClick={(e) => handleDelete(e, notification.id)}
+                            onClick={(e) => handleDelete(e, notification)}
                             size="small"
                             disabled={loading}
                           >
