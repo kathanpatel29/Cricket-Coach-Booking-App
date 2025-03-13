@@ -72,7 +72,6 @@ const Navbar = () => {
   const coachLinks = [
     ...authLinks,
     { text: t('coach.setAvailability'), path: '/coach/availability' },
-    { text: t('coach.manageTimeSlots'), path: '/coach/time-slots' },
     { text: t('booking.title'), path: '/coach/bookings' },
     { text: t('booking.requests'), path: '/coach/booking-requests' },
   ];
