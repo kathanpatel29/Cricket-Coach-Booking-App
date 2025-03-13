@@ -4,8 +4,8 @@ import PrivateRoute from './PrivateRoute';
 
 // Public Pages
 import Home from '../pages/Home';
-import Login from '../pages/auth/Login';
-import Register from '../pages/auth/Register';
+import Login from '../pages/Auth/Login';
+import Register from '../pages/Auth/Register';
 import About from '../pages/About';
 import Contact from '../pages/Contact';
 import FAQ from '../pages/FAQ';
