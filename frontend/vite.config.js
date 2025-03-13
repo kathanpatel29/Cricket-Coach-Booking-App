@@ -27,7 +27,7 @@ export default defineConfig(({ mode }) => {
             ? "https://cricket-coach-booking-app-backend.vercel.app"
             : "http://localhost:5000",
           changeOrigin: true,
-          secure: false,
+          secure: true,
         },
       },
     },

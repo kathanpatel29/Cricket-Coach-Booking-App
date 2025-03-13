@@ -17,9 +17,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Define allowed origins explicitly
 const allowedOrigins = [
   "http://localhost:3000", // Local frontend
-  "http://localhost:5000", // Local backend (if applicable)
-  "https://cricket-coach-booking-app.vercel.app/",//frontend
-  "https://cricket-coach-booking-app-backend.vercel.app/"//backend
+  "https://cricket-coach-booking-app.vercel.app",//frontend
 ];
 
 const corsOptions = {
