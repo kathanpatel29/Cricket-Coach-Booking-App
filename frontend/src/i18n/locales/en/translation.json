@@ -70,6 +70,8 @@
     "specializations": "Specializations",
     "certifications": "Certifications",
     "availability": "Availability",
+    "setAvailability": "Set Availability",
+    "manageTimeSlots": "Time Slots",
     "ratings": "Ratings",
     "reviews": "Reviews",
     "batting": "Batting",
@@ -97,6 +99,7 @@
     "completed": "Completed",
     "pending": "Pending",
     "confirmed": "Confirmed",
+    "requests": "Booking Requests",
     "bookingConfirmed": "Booking Confirmed!",
     "bookingCancelled": "Booking Cancelled",
     "cancelBooking": "Cancel Booking",
@@ -120,7 +123,9 @@
     "currency": "Currency",
     "date": "Date",
     "transactionId": "Transaction ID",
-    "paymentHistory": "Payment History"
+    "paymentHistory": "Payment History",
+    "pending": "Payment Pending",
+    "pendingPayments": "Pending Payments"
   },
   "notifications": {
     "title": "Notifications",
@@ -246,5 +251,11 @@
       "subtitle": "Join thousands of players who have taken their game to the next level with CricCoach.",
       "buttonText": "Get Started Today"
     }
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welcome back",
+    "overview": "Overview",
+    "stats": "Statistics"
   }
 } 
