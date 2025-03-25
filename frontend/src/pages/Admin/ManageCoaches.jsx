@@ -47,7 +47,8 @@ const ManageCoaches = () => {
   const [openRejectDialog, setOpenRejectDialog] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
-  const [debugInfo, setDebugInfo] = useState(null);
+  // Comment out debug info state
+  // const [debugInfo, setDebugInfo] = useState(null);
 
   // Fetch pending coaches
   const fetchCoaches = async () => {
@@ -154,7 +155,8 @@ const ManageCoaches = () => {
       const total = pendingResponse?.data?.data?.pagination?.total || pendingFromDashboard.length;
       setTotalPages(Math.ceil(total / 10) || 1);
       
-      // Set debug information for troubleshooting
+      // Comment out setting debug information
+      /* 
       setDebugInfo({
         pendingAPICount: pendingFromAPI.length,
         dashboardAPICount: pendingFromDashboard.length,
@@ -166,12 +168,14 @@ const ManageCoaches = () => {
         hasHourlyRateIssues: normalizedCoaches.some(coach => !coach.hourlyRate),
         hasDateIssues: normalizedCoaches.some(coach => !coach.createdAt)
       });
+      */
       
     } catch (err) {
       console.error('Error fetching coaches:', err);
       setError(`Failed to load coaches: ${err.message || 'Unknown error'}`);
       setCoaches([]);
-      setDebugInfo({ error: err.toString(), response: err.response?.data });
+      // Comment out setting debug error info
+      // setDebugInfo({ error: err.toString(), response: err.response?.data });
     } finally {
       setLoading(false);
     }
@@ -314,6 +318,7 @@ const ManageCoaches = () => {
           Refresh Data
         </Button>
         
+        {/* Comment out debug information display
         {debugInfo && (
           <Box sx={{ mt: 3, p: 2, bgcolor: '#f5f5f5', borderRadius: 1, textAlign: 'left' }}>
             <Typography variant="subtitle2" gutterBottom>Debug Information:</Typography>
@@ -349,6 +354,7 @@ const ManageCoaches = () => {
             </Box>
           </Box>
         )}
+        */}
       </Box>
     );
   };

@@ -769,7 +769,7 @@ const MyBookings = () => {
                   <TableCell>Status</TableCell>
                   <TableCell>Payment</TableCell>
                   {!isAdmin && <TableCell>Actions</TableCell>}
-                  {isAdmin && <TableCell>Debug</TableCell>}
+                  {/* {isAdmin && <TableCell>Debug</TableCell>} */}
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -922,7 +922,7 @@ const MyBookings = () => {
                             variant="outlined" 
                             color="info"
                             onClick={() => {
-                              console.log('Booking Debug Info:', JSON.stringify(booking, null, 2));
+                              // console.log('Booking Debug Info:', JSON.stringify(booking, null, 2));
                               console.log('Raw booking object:', booking);
                               
                               // Check specific properties
@@ -936,7 +936,7 @@ const MyBookings = () => {
                               console.log('endTime:', booking.endTime);
                             }}
                           >
-                            Debug
+                            {/* Debug */}
                           </Button>
                         </TableCell>
                       )}

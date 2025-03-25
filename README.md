@@ -2,7 +2,7 @@
 
 A full-stack web application for booking cricket coaching sessions, managing coaches, and handling appointments with robust error handling and performance optimizations.
 
-Live Demo: [https://cric-coach-app.vercel.app](https://cric-coach-app.vercel.app)
+Live Demo: [https://cricket-coach-booking-app.vercel.app](https://cricket-coach-booking-app.vercel.app)
 
 ## Features
 
@@ -141,7 +141,7 @@ The application follows a modern client-server architecture:
 
 ## Quick Start
 
-1. Visit [https://cric-coach-app.vercel.app](https://cric-coach-app.vercel.app)
+1. Visit [https://cricket-coach-booking-app.vercel.app](https://cricket-coach-booking-app.vercel.app)
 2. Register as a user or coach
 3. Browse available coaches or set up your coaching profile
 4. Book sessions or manage your coaching schedule
